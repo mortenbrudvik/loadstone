@@ -1,0 +1,60 @@
+name: Loadstone
+options:
+  deploymentTarget:
+    macOS: "14.0"
+  bundleIdPrefix: com.brudvik
+  xcodeVersion: "16.0"
+  createIntermediateGroups: true
+
+packages:
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    from: "2.0.0"
+
+targets:
+  Loadstone:
+    type: application
+    platform: macOS
+    sources:
+      - path: Loadstone
+        excludes:
+          - "**/.DS_Store"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.brudvik.loadstone
+        PRODUCT_NAME: Loadstone
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_FILE: Loadstone/App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Loadstone/App/Loadstone.entitlements
+        ENABLE_HARDENED_RUNTIME: false
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        GENERATE_INFOPLIST_FILE: false
+        ENABLE_APP_SANDBOX: false
+        COMBINE_HIDPI_IMAGES: true
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        Debug:
+          ENABLE_TESTABILITY: YES
+    dependencies:
+      - package: KeyboardShortcuts
+      - sdk: ApplicationServices.framework
+      - sdk: ServiceManagement.framework
+
+  LoadstoneTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - LoadstoneTests
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        GENERATE_INFOPLIST_FILE: true
+        PRODUCT_BUNDLE_IDENTIFIER: com.brudvik.loadstone.tests
+    dependencies:
+      - target: Loadstone

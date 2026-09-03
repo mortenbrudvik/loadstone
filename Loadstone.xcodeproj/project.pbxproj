@@ -1,0 +1,571 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		08D089A652ED428255E7A554 /* WindowDirector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A69AD3FA66E22E054DF077F /* WindowDirector.swift */; };
+		10B804BD675391127E0C68E5 /* TileLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF34E713A4FB54D846EC0811 /* TileLayoutTests.swift */; };
+		19E129C799DCC850559B3509 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64027FD7A58D17EDBA92ED0A /* ApplicationServices.framework */; };
+		2E23B07C49DF6D0321A4C659 /* HotkeyCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3C09E26C78784C1853A6888 /* HotkeyCenter.swift */; };
+		30655C3D0693C383C088231C /* ServiceManagement.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4AED1B49FC88388B461733A4 /* ServiceManagement.framework */; };
+		4650E1019A307F3D9152106E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 913E358A2851201FAE39489B /* Assets.xcassets */; };
+		6D7423DF71F71110EBB29ABD /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F205A796038BC75B0A26F02D /* AppSettings.swift */; };
+		77397281FAF63E71326DAEB1 /* Tile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A8982208C08862A2DC49CE /* Tile.swift */; };
+		7F18F16102A5B9E04B7D94FA /* SnapPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EE864239314E2235B8BB7F /* SnapPreview.swift */; };
+		87FA9205249D4EEAF12B2FCE /* LoadstoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13ACDF9DC0BB1A446D2C97D4 /* LoadstoneApp.swift */; };
+		8938B1190415A8DBE44410CC /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B621493094581AED3DF756DE /* AppDelegate.swift */; };
+		8E90655B0C41D9CDD803DC61 /* ScreenGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F3F6382364DA75E9FCF01A2 /* ScreenGeometry.swift */; };
+		B176DD6744AC82CB610BE957 /* SettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 600E2D2D039F62C54554E2D9 /* SettingsWindow.swift */; };
+		B35C60A55FE7F60DB7F87862 /* StatusItemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FEE345C3623250DF1AFB1ED /* StatusItemController.swift */; };
+		B6DFA7B336DC635F774EAAF3 /* AXWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1CDAE58BD6791FED229995B /* AXWindow.swift */; };
+		C6CD6AC4F6D939CE1D374D4D /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = CA09F1A6778BC56F094C3D33 /* KeyboardShortcuts */; };
+		D5BC4C7DC44E57B84EA845EC /* NativeTiling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66AC3ADD2ED55AE5514E49E3 /* NativeTiling.swift */; };
+		EE01D230DEE7DA26C5A74DEC /* AccessibilityAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 878C9086B97A4F6A8F1A475D /* AccessibilityAuth.swift */; };
+		F7740A0F491C2B5945DE5DDD /* EdgeDragMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B8794525A53B6B866D02B6 /* EdgeDragMonitor.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		045B87EBAD535904FFBAE75B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0FF8D73A2432B37A5BE0F5B3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7E7E344FC406944C8621D582;
+			remoteInfo = Loadstone;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		13ACDF9DC0BB1A446D2C97D4 /* LoadstoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadstoneApp.swift; sourceTree = "<group>"; };
+		2840BB6BC043EE3313682785 /* Loadstone.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Loadstone.entitlements; sourceTree = "<group>"; };
+		329600361EF926CA5801F04D /* LoadstoneTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LoadstoneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		43EE864239314E2235B8BB7F /* SnapPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapPreview.swift; sourceTree = "<group>"; };
+		4AED1B49FC88388B461733A4 /* ServiceManagement.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ServiceManagement.framework; path = System/Library/Frameworks/ServiceManagement.framework; sourceTree = SDKROOT; };
+		5A5CF8F6612FF94BBA271F26 /* Loadstone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Loadstone.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5A69AD3FA66E22E054DF077F /* WindowDirector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowDirector.swift; sourceTree = "<group>"; };
+		5FEE345C3623250DF1AFB1ED /* StatusItemController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemController.swift; sourceTree = "<group>"; };
+		600E2D2D039F62C54554E2D9 /* SettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindow.swift; sourceTree = "<group>"; };
+		64027FD7A58D17EDBA92ED0A /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = System/Library/Frameworks/ApplicationServices.framework; sourceTree = SDKROOT; };
+		66AC3ADD2ED55AE5514E49E3 /* NativeTiling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTiling.swift; sourceTree = "<group>"; };
+		7F3F6382364DA75E9FCF01A2 /* ScreenGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenGeometry.swift; sourceTree = "<group>"; };
+		85A8982208C08862A2DC49CE /* Tile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tile.swift; sourceTree = "<group>"; };
+		878C9086B97A4F6A8F1A475D /* AccessibilityAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityAuth.swift; sourceTree = "<group>"; };
+		8B91E048D299E0D6FB4E2B69 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		913E358A2851201FAE39489B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B621493094581AED3DF756DE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		CF34E713A4FB54D846EC0811 /* TileLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileLayoutTests.swift; sourceTree = "<group>"; };
+		D1CDAE58BD6791FED229995B /* AXWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AXWindow.swift; sourceTree = "<group>"; };
+		E3C09E26C78784C1853A6888 /* HotkeyCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyCenter.swift; sourceTree = "<group>"; };
+		F205A796038BC75B0A26F02D /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		F9B8794525A53B6B866D02B6 /* EdgeDragMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeDragMonitor.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		036E8DD9261FE14C69E2AE31 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C6CD6AC4F6D939CE1D374D4D /* KeyboardShortcuts in Frameworks */,
+				19E129C799DCC850559B3509 /* ApplicationServices.framework in Frameworks */,
+				30655C3D0693C383C088231C /* ServiceManagement.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		004F349D4E33CC2FE0FBA0BC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5A5CF8F6612FF94BBA271F26 /* Loadstone.app */,
+				329600361EF926CA5801F04D /* LoadstoneTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		02BC0618636490E55AEA4774 /* LoadstoneTests */ = {
+			isa = PBXGroup;
+			children = (
+				CF34E713A4FB54D846EC0811 /* TileLayoutTests.swift */,
+			);
+			path = LoadstoneTests;
+			sourceTree = "<group>";
+		};
+		4D3D5810785FDEC43053B70F /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				D1CDAE58BD6791FED229995B /* AXWindow.swift */,
+				7F3F6382364DA75E9FCF01A2 /* ScreenGeometry.swift */,
+				85A8982208C08862A2DC49CE /* Tile.swift */,
+				5A69AD3FA66E22E054DF077F /* WindowDirector.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		6A5B3FE83FDCEB8F0DC66882 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				B621493094581AED3DF756DE /* AppDelegate.swift */,
+				8B91E048D299E0D6FB4E2B69 /* Info.plist */,
+				2840BB6BC043EE3313682785 /* Loadstone.entitlements */,
+				13ACDF9DC0BB1A446D2C97D4 /* LoadstoneApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		7614C34B9F3978E843D1EEAB /* Input */ = {
+			isa = PBXGroup;
+			children = (
+				F9B8794525A53B6B866D02B6 /* EdgeDragMonitor.swift */,
+				E3C09E26C78784C1853A6888 /* HotkeyCenter.swift */,
+				43EE864239314E2235B8BB7F /* SnapPreview.swift */,
+			);
+			path = Input;
+			sourceTree = "<group>";
+		};
+		8CAB4283753A813D96C7D8DF = {
+			isa = PBXGroup;
+			children = (
+				92CB99F571AD785207BED323 /* Loadstone */,
+				02BC0618636490E55AEA4774 /* LoadstoneTests */,
+				9990E86EECCB728105C55BEE /* Frameworks */,
+				004F349D4E33CC2FE0FBA0BC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		92CB99F571AD785207BED323 /* Loadstone */ = {
+			isa = PBXGroup;
+			children = (
+				913E358A2851201FAE39489B /* Assets.xcassets */,
+				6A5B3FE83FDCEB8F0DC66882 /* App */,
+				4D3D5810785FDEC43053B70F /* Core */,
+				7614C34B9F3978E843D1EEAB /* Input */,
+				93859978CCAACEC055AC8138 /* Support */,
+				A10D650B15E7464417432D6E /* UI */,
+			);
+			path = Loadstone;
+			sourceTree = "<group>";
+		};
+		93859978CCAACEC055AC8138 /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				878C9086B97A4F6A8F1A475D /* AccessibilityAuth.swift */,
+				F205A796038BC75B0A26F02D /* AppSettings.swift */,
+				66AC3ADD2ED55AE5514E49E3 /* NativeTiling.swift */,
+			);
+			path = Support;
+			sourceTree = "<group>";
+		};
+		9990E86EECCB728105C55BEE /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				64027FD7A58D17EDBA92ED0A /* ApplicationServices.framework */,
+				4AED1B49FC88388B461733A4 /* ServiceManagement.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		A10D650B15E7464417432D6E /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				600E2D2D039F62C54554E2D9 /* SettingsWindow.swift */,
+				5FEE345C3623250DF1AFB1ED /* StatusItemController.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		7E7E344FC406944C8621D582 /* Loadstone */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FFBB1FBEF4EF70568194F954 /* Build configuration list for PBXNativeTarget "Loadstone" */;
+			buildPhases = (
+				B9D460AB5A39BA51F24E71EC /* Sources */,
+				059D8B574CB9DD74DA12409C /* Resources */,
+				036E8DD9261FE14C69E2AE31 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Loadstone;
+			packageProductDependencies = (
+				CA09F1A6778BC56F094C3D33 /* KeyboardShortcuts */,
+			);
+			productName = Loadstone;
+			productReference = 5A5CF8F6612FF94BBA271F26 /* Loadstone.app */;
+			productType = "com.apple.product-type.application";
+		};
+		87F77D4F9EB5DCF85998FA37 /* LoadstoneTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7E7820F03775D92FEC87579E /* Build configuration list for PBXNativeTarget "LoadstoneTests" */;
+			buildPhases = (
+				C4C5F8F9F25617FA3F075A2F /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5DC4E12475CE9108D3515B45 /* PBXTargetDependency */,
+			);
+			name = LoadstoneTests;
+			packageProductDependencies = (
+			);
+			productName = LoadstoneTests;
+			productReference = 329600361EF926CA5801F04D /* LoadstoneTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		0FF8D73A2432B37A5BE0F5B3 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 4E0FA67CDDEBB4433D3256A4 /* Build configuration list for PBXProject "Loadstone" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 8CAB4283753A813D96C7D8DF;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				0755C1FD8DE9D6A30AB314E2 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 004F349D4E33CC2FE0FBA0BC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7E7E344FC406944C8621D582 /* Loadstone */,
+				87F77D4F9EB5DCF85998FA37 /* LoadstoneTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		059D8B574CB9DD74DA12409C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4650E1019A307F3D9152106E /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B9D460AB5A39BA51F24E71EC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B6DFA7B336DC635F774EAAF3 /* AXWindow.swift in Sources */,
+				EE01D230DEE7DA26C5A74DEC /* AccessibilityAuth.swift in Sources */,
+				8938B1190415A8DBE44410CC /* AppDelegate.swift in Sources */,
+				6D7423DF71F71110EBB29ABD /* AppSettings.swift in Sources */,
+				F7740A0F491C2B5945DE5DDD /* EdgeDragMonitor.swift in Sources */,
+				2E23B07C49DF6D0321A4C659 /* HotkeyCenter.swift in Sources */,
+				87FA9205249D4EEAF12B2FCE /* LoadstoneApp.swift in Sources */,
+				D5BC4C7DC44E57B84EA845EC /* NativeTiling.swift in Sources */,
+				8E90655B0C41D9CDD803DC61 /* ScreenGeometry.swift in Sources */,
+				B176DD6744AC82CB610BE957 /* SettingsWindow.swift in Sources */,
+				7F18F16102A5B9E04B7D94FA /* SnapPreview.swift in Sources */,
+				B35C60A55FE7F60DB7F87862 /* StatusItemController.swift in Sources */,
+				77397281FAF63E71326DAEB1 /* Tile.swift in Sources */,
+				08D089A652ED428255E7A554 /* WindowDirector.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C4C5F8F9F25617FA3F075A2F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				10B804BD675391127E0C68E5 /* TileLayoutTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		5DC4E12475CE9108D3515B45 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7E7E344FC406944C8621D582 /* Loadstone */;
+			targetProxy = 045B87EBAD535904FFBAE75B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		4B96466E25E4B77A7E1B6272 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.brudvik.loadstone.tests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Loadstone.app/Contents/MacOS/Loadstone";
+			};
+			name = Debug;
+		};
+		5335040B3FE94182F7CA02CE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Loadstone/App/Loadstone.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_TESTABILITY = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Loadstone/App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.brudvik.loadstone;
+				PRODUCT_NAME = Loadstone;
+				SDKROOT = macosx;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		66695DA27CC8CCC199B60B62 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		9D6D1041AAA0C4FF69B17E88 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Loadstone/App/Loadstone.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Loadstone/App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.brudvik.loadstone;
+				PRODUCT_NAME = Loadstone;
+				SDKROOT = macosx;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		AFC331EFC8222418C6D36A11 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		D435FED9916FCA3276FA7E03 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.brudvik.loadstone.tests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Loadstone.app/Contents/MacOS/Loadstone";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4E0FA67CDDEBB4433D3256A4 /* Build configuration list for PBXProject "Loadstone" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AFC331EFC8222418C6D36A11 /* Debug */,
+				66695DA27CC8CCC199B60B62 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		7E7820F03775D92FEC87579E /* Build configuration list for PBXNativeTarget "LoadstoneTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4B96466E25E4B77A7E1B6272 /* Debug */,
+				D435FED9916FCA3276FA7E03 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FFBB1FBEF4EF70568194F954 /* Build configuration list for PBXNativeTarget "Loadstone" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5335040B3FE94182F7CA02CE /* Debug */,
+				9D6D1041AAA0C4FF69B17E88 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		0755C1FD8DE9D6A30AB314E2 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		CA09F1A6778BC56F094C3D33 /* KeyboardShortcuts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0755C1FD8DE9D6A30AB314E2 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
+			productName = KeyboardShortcuts;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 0FF8D73A2432B37A5BE0F5B3 /* Project object */;
+}
