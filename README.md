@@ -59,9 +59,34 @@ U  I
 J  K
 ```
 
-## Install from source
+## Install
 
-There is no signed download yet. You build it, copy it to Applications, then grant Accessibility.
+### Download
+
+Grab **Loadstone.app** from the [latest release](https://github.com/mortenbrudvik/loadstone/releases/latest), unzip it, and drag it to **Applications**.
+
+The build is not Apple-notarized (no Developer ID yet). First launch:
+
+1. **Right-click** Loadstone → **Open** → **Open**
+2. Or System Settings → Privacy & Security → **Open Anyway**
+
+Apple Silicon (arm64) only, macOS 14+.
+
+### Accessibility (required)
+
+Loadstone moves other apps’ windows through the Accessibility API. macOS will not apply the permission until the app restarts.
+
+1. System Settings → **Privacy & Security** → **Accessibility**
+2. If Loadstone is already listed, select it and click **−**
+3. Click **+** and choose **`/Applications/Loadstone.app`**
+4. Turn it **on**
+5. Menu bar → Loadstone → **Relaunch**
+
+After that, `⌃⌥←` should pin the frontmost window to the left half.
+
+Optional: **Settings → Launch at login**.
+
+### Build from source
 
 **You need:** macOS 14+, Xcode 16+, [Homebrew](https://brew.sh), [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
@@ -80,21 +105,7 @@ ditto "$(find ~/Library/Developer/Xcode/DerivedData -path '*/Build/Products/Rele
 open /Applications/Loadstone.app
 ```
 
-The first launch is unsigned. **Right-click the app → Open**, or allow it in **System Settings → Privacy & Security**.
-
-### Accessibility (required)
-
-Loadstone moves other apps’ windows through the Accessibility API. macOS will not apply the permission until the app restarts.
-
-1. System Settings → **Privacy & Security** → **Accessibility**
-2. If Loadstone is already listed, select it and click **−**
-3. Click **+** and choose **`/Applications/Loadstone.app`**
-4. Turn it **on**
-5. Menu bar → Loadstone → **Relaunch**
-
-After that, `⌃⌥←` should pin the frontmost window to the left half.
-
-Optional: **Settings → Launch at login**.
+Then grant Accessibility as above. First launch of an unsigned build: **Right-click → Open**.
 
 ## Build and test
 
