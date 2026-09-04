@@ -45,12 +45,21 @@ enum ScreenGeometry {
         display(containing: CGPoint(x: rect.midX, y: rect.midY), in: displays)
     }
 
-    /// The display `delta` steps away in AppKit's order, wrapping at both ends. With one
-    /// display this is the display itself, so Next/Previous Display becomes a no-op. Nil if
-    /// `display` is not in the list (unplugged between lookup and use).
+    /// The display `delta` steps away in reading order (left to right by x origin; displays
+    /// stacked at the same x go top to bottom), wrapping at both ends. Not AppKit's order,
+    /// which puts the primary first and the rest in connection order, so with three or more
+    /// screens Next Display would otherwise jump around the desk. With one display this is the
+    /// display itself, so Next/Previous Display becomes a no-op. Nil if `display` is not in the
+    /// list (unplugged between lookup and use).
     static func neighbor(of display: Display, delta: Int, in displays: [Display] = Display.all) -> Display? {
-        guard let index = displays.firstIndex(of: display) else { return nil }
-        return displays[(index + delta).modulo(displays.count)]
+        let ordered = displays.sorted(by: readingOrder)
+        guard let index = ordered.firstIndex(of: display) else { return nil }
+        return ordered[(index + delta).modulo(ordered.count)]
+    }
+
+    private static func readingOrder(_ a: Display, _ b: Display) -> Bool {
+        if a.frame.minX != b.frame.minX { return a.frame.minX < b.frame.minX }
+        return a.frame.maxY > b.frame.maxY
     }
 
     private static func flipped(_ rect: CGRect, primaryMaxY: CGFloat) -> CGRect {

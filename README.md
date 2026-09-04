@@ -29,7 +29,7 @@ Loadstone sits in the menu bar and stays out of the way. When you need two docs 
 - **Thirds** — left, center, right, plus two-thirds
 - **Maximize, center, restore** — restore puts the window back where it was before Loadstone first moved it
 - **Drag to snap** — edges for halves, corners for quarters, top to maximize, bottom for thirds. Only a window that is actually being dragged snaps; selecting text or dragging a slider near an edge does nothing
-- **Multi-display** — send a window to the next or previous screen
+- **Multi-display** — send a window to the next or previous screen, walking displays left to right as they sit on the desk
 - **Custom shortcuts** — Magnet-style defaults, all editable
 - **Launch at login** — optional, from Settings
 - **Portrait screens** — the side edges split three ways along their length (corner, vertical third, corner); the bottom edge gives halves

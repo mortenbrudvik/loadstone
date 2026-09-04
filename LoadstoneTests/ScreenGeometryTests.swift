@@ -76,4 +76,35 @@ final class ScreenGeometryTests: XCTestCase {
     func testNeighborOfAnUnknownDisplayIsNothing() {
         XCTAssertNil(ScreenGeometry.neighbor(of: left, delta: 1, in: [primary, right]))
     }
+
+    func testNeighborsFollowLeftToRightOrderNotAppKitOrder() {
+        // AppKit lists the primary first and the rest in connection order. Here the primary sits
+        // between the other two, so AppKit's cycle (primary → left → right) differs from the
+        // spatial one (left → primary → right).
+        let appKitOrder = [primary, left, right]
+        XCTAssertEqual(ScreenGeometry.neighbor(of: primary, delta: 1, in: appKitOrder), right)
+        XCTAssertEqual(ScreenGeometry.neighbor(of: primary, delta: -1, in: appKitOrder), left)
+    }
+
+    func testNeighborWrapsFromTheRightmostToTheLeftmost() {
+        let appKitOrder = [primary, left, right]
+        XCTAssertEqual(ScreenGeometry.neighbor(of: right, delta: 1, in: appKitOrder), left)
+        XCTAssertEqual(ScreenGeometry.neighbor(of: left, delta: -1, in: appKitOrder), right)
+    }
+
+    func testDisplaysStackedAtTheSameXGoTopToBottom() {
+        // Reading order: a column of displays is walked top to bottom before moving right.
+        let below = Display(
+            frame: CGRect(x: 0, y: 0, width: 1920, height: 1080),
+            visibleFrame: CGRect(x: 0, y: 80, width: 1920, height: 975)
+        )
+        let above = Display(
+            frame: CGRect(x: 0, y: 1080, width: 1920, height: 1080),
+            visibleFrame: CGRect(x: 0, y: 1080, width: 1920, height: 1055)
+        )
+        let appKitOrder = [below, above, left]
+        XCTAssertEqual(ScreenGeometry.neighbor(of: left, delta: 1, in: appKitOrder), above)
+        XCTAssertEqual(ScreenGeometry.neighbor(of: above, delta: 1, in: appKitOrder), below)
+        XCTAssertEqual(ScreenGeometry.neighbor(of: below, delta: 1, in: appKitOrder), left)
+    }
 }
