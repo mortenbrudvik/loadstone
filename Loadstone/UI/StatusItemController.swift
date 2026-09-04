@@ -3,8 +3,16 @@ import KeyboardShortcuts
 
 @MainActor
 final class StatusItemController: NSObject, NSMenuDelegate {
+    /// The user guide is the README on GitHub; the Help item opens it in the browser.
+    static let helpURL = URL(string: "https://github.com/mortenbrudvik/loadstone#readme")!
+
     private let statusItem: NSStatusItem
     private let settings = SettingsWindowController()
+
+    /// The status-bar menu, exposed for tests.
+    var menu: NSMenu {
+        statusItem.menu!
+    }
 
     override init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -55,6 +63,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         prefs.target = self
         menu.addItem(prefs)
 
+        let help = NSMenuItem(title: "Loadstone Help", action: #selector(openHelp), keyEquivalent: "?")
+        help.target = self
+        menu.addItem(help)
+
         let relaunch = NSMenuItem(title: "Relaunch", action: #selector(relaunch), keyEquivalent: "")
         relaunch.target = self
         menu.addItem(relaunch)
@@ -74,6 +86,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func openSettings() {
         settings.show()
+    }
+
+    @objc func openHelp() {
+        NSWorkspace.shared.open(Self.helpURL)
     }
 
     @objc private func relaunch() {

@@ -21,6 +21,7 @@
 		80FA3E79EDD89531DE64F90C /* NativeTilingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59F1E47A09C22FEE90F6108D /* NativeTilingTests.swift */; };
 		87FA9205249D4EEAF12B2FCE /* LoadstoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13ACDF9DC0BB1A446D2C97D4 /* LoadstoneApp.swift */; };
 		8938B1190415A8DBE44410CC /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B621493094581AED3DF756DE /* AppDelegate.swift */; };
+		8B0EB13D7E8073A5D3EF129A /* StatusItemControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94624997BB12C2458C7933CC /* StatusItemControllerTests.swift */; };
 		8E90655B0C41D9CDD803DC61 /* ScreenGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F3F6382364DA75E9FCF01A2 /* ScreenGeometry.swift */; };
 		9F6AC5F774F891A6990CB4B5 /* MovableWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 965E0C57AA3C1091E001B770 /* MovableWindow.swift */; };
 		B176DD6744AC82CB610BE957 /* SettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 600E2D2D039F62C54554E2D9 /* SettingsWindow.swift */; };
@@ -70,6 +71,7 @@
 		878C9086B97A4F6A8F1A475D /* AccessibilityAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityAuth.swift; sourceTree = "<group>"; };
 		8B91E048D299E0D6FB4E2B69 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		913E358A2851201FAE39489B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		94624997BB12C2458C7933CC /* StatusItemControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemControllerTests.swift; sourceTree = "<group>"; };
 		965E0C57AA3C1091E001B770 /* MovableWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MovableWindow.swift; sourceTree = "<group>"; };
 		A753485368B7B0B242F24A50 /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
 		A9499BB20C9560BBCC8D5F88 /* ScreenGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenGeometryTests.swift; sourceTree = "<group>"; };
@@ -116,6 +118,7 @@
 				59F1E47A09C22FEE90F6108D /* NativeTilingTests.swift */,
 				A9499BB20C9560BBCC8D5F88 /* ScreenGeometryTests.swift */,
 				E37C9082E49E57A9F3B0EBBA /* SnapZonesTests.swift */,
+				94624997BB12C2458C7933CC /* StatusItemControllerTests.swift */,
 				CF34E713A4FB54D846EC0811 /* TileLayoutTests.swift */,
 				D63C71D2C8C769BE0692B7B2 /* WindowCommandTests.swift */,
 				2E9F893A340BBDF203330619 /* WindowDirectorTests.swift */,
@@ -334,6 +337,7 @@
 				80FA3E79EDD89531DE64F90C /* NativeTilingTests.swift in Sources */,
 				7FCCC9082F2DD6666DBB33B5 /* ScreenGeometryTests.swift in Sources */,
 				15A5A481679D7BA92A582774 /* SnapZonesTests.swift in Sources */,
+				8B0EB13D7E8073A5D3EF129A /* StatusItemControllerTests.swift in Sources */,
 				10B804BD675391127E0C68E5 /* TileLayoutTests.swift in Sources */,
 				BC85168F26B6828B1ECDCD8C /* WindowCommandTests.swift in Sources */,
 				E52A13360EAF495F21717C65 /* WindowDirectorTests.swift in Sources */,

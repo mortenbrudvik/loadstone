@@ -59,6 +59,23 @@ U  I
 J  K
 ```
 
+## Drag to snap
+
+Drag a window by its title bar until the pointer reaches an edge or corner of the screen. A blue preview shows the tile; let go to snap. Only a window that is actually moving snaps, so selecting text or dragging a slider to an edge does nothing.
+
+<p align="center">
+  <img src="docs/snap-zones.svg" alt="Drag zones: corners give quarters, the sides give halves, the top edge maximizes, the bottom edge gives thirds; on a portrait screen the sides give corner, vertical third, corner and the bottom edge gives halves" width="960">
+</p>
+
+- **Corners** — a quarter. The corner zones are 140 pt squares and win over the edges.
+- **Left and right edges** — a half.
+- **Top edge** — maximize.
+- **Bottom edge** — a third, chosen by where along the edge you let go.
+- **Portrait screens** — the sides give corner, vertical third, corner along their length, and the bottom edge gives halves.
+- **More than one display** — every display has its own zones, including the edge it shares with a neighbor. The pointer does not stop at a shared edge the way it does at an outer one, so slow down there and let go while the preview is showing. The window snaps onto the display the pointer is on, not the one it started on.
+
+The edge zones are 16 pt deep and extend the same distance past an outer edge, so overshooting still counts.
+
 ## Install
 
 ### Download
@@ -106,6 +123,34 @@ open /Applications/Loadstone.app
 ```
 
 Then grant Accessibility as above.
+
+## Troubleshooting
+
+Menu bar → Loadstone → **Loadstone Help** opens this page.
+
+**Shortcuts do nothing, or Loadstone beeps.** Accessibility is not in effect. Follow the [Accessibility steps](#accessibility-required) again, including the Relaunch: macOS can list Loadstone as allowed and still refuse until the app restarts. A Debug build gets a new signature on every build, so it needs the remove-and-re-add steps after each rebuild.
+
+**Settings says “Loadstone can move windows” but nothing moves.** Same cause. Menu bar → Loadstone → **Relaunch**.
+
+**One window will not move.** Some windows are fixed-size, and some apps refuse frames set from outside. Loadstone beeps and logs the refusal; everything else keeps working.
+
+**A shortcut is ignored.** Another app or macOS owns that key combination (Mission Control uses `⌃←` and `⌃→`, for example). Pick a different one in **Settings → Shortcuts**. Loadstone logs the effective binding of every shortcut at startup.
+
+**Dragging to an edge does not snap.** Drag by the title bar; the window has to move before Loadstone treats the gesture as a window drag. On the edge between two displays the pointer passes straight through, so slow down and release while the preview is showing.
+
+**Restore does nothing.** Restore is one-shot: it puts the window back where it was before Loadstone first moved it, then forgets. The next Loadstone command starts a new memory. The memory is also dropped when the window’s app quits or Loadstone restarts.
+
+**Next / previous display beeps.** Only one display is attached.
+
+**macOS’s own edge tiling is off after Loadstone crashed or was force-quit.** Loadstone turns it off while running and back on when it quits normally. Re-enable it under System Settings → **Desktop & Dock** → **Windows**.
+
+**Reading the log.** Loadstone reports to the unified log under the subsystem `com.brudvik.loadstone`. In Terminal:
+
+```bash
+/usr/bin/log show --info --predicate 'subsystem == "com.brudvik.loadstone"' --last 10m
+```
+
+Or open **Console.app** and filter by that subsystem.
 
 ## Build and test
 
