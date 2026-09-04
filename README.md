@@ -78,6 +78,14 @@ The edge zones are 16 pt deep and extend the same distance past an outer edge, s
 
 ## Install
 
+### Homebrew
+
+```bash
+brew install --cask mortenbrudvik/tap/loadstone
+```
+
+Upgrade later with `brew upgrade --cask loadstone`. Then grant Accessibility as below.
+
 ### Download
 
 Grab **Loadstone.app** from the [latest release](https://github.com/mortenbrudvik/loadstone/releases/latest), unzip it, and drag it to **Applications**.

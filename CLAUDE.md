@@ -39,8 +39,11 @@ Follow **`~/code/macos-github-release.md`** (shared across app repos). Loadstone
 | Scheme / app | `Loadstone` |
 | Nested bundle | `Contents/Resources/KeyboardShortcuts_KeyboardShortcuts.bundle` |
 | DerivedData | `/tmp/LoadstoneDerived` |
+| Homebrew tap | `mortenbrudvik/homebrew-tap`, cask `loadstone` |
 
 Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`, then `xcodegen generate`. App Store is a separate track (sandbox + Apple Distribution); this repo ships GitHub zips only.
+
+After the GitHub release is published, update the tap so `brew upgrade` sees it: in a clone of the tap (`brew --repo mortenbrudvik/tap` once tapped) run `./bump.sh <version>`, which downloads the asset, records its sha256, and commits, then push.
 
 Reading the app's logs: `log` is a zsh builtin, so use the full path, and info-level lines (startup summary, hotkey bindings) need `--info`:
 
