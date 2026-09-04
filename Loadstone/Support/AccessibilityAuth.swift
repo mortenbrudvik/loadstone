@@ -16,12 +16,30 @@ enum AccessibilityAuth {
     /// Whether an actual Accessibility call succeeds. After a grant, or after a rebuild that
     /// changed the code signature, `isTrusted` can say yes while every call answers
     /// `.apiDisabled` until the app relaunches. This is what the Settings pane reports.
+    ///
+    /// The probe must target *another application's* element. Two ways to get this wrong:
+    /// the system-wide element answers `.cannotComplete` when the process is untrusted and
+    /// never `.apiDisabled`, so a probe against it reports every process as working; and a
+    /// process may always read its own hierarchy, trusted or not, so probing ourselves would
+    /// answer yes just as uselessly. Only a cross-application read tells the states apart.
     static var isEffectivelyTrusted: Bool {
+        // No other app to ask (no window server, a bare test rig): fall back to what TCC says
+        // rather than inventing an answer.
+        guard let pid = probeTarget else { return isTrusted }
         var value: CFTypeRef?
         let error = AXUIElementCopyAttributeValue(
-            AXUIElementCreateSystemWide(), kAXFocusedApplicationAttribute as CFString, &value
+            AXUIElementCreateApplication(pid), kAXFocusedWindowAttribute as CFString, &value
         )
+        // Anything but `.apiDisabled` means the call was allowed through: the app having no
+        // focused window, or not answering, is not a permission problem.
         return error != .apiDisabled
+    }
+
+    /// A regular app that is not Loadstone, to aim the trust probe at.
+    private static var probeTarget: pid_t? {
+        NSWorkspace.shared.runningApplications.first {
+            $0.activationPolicy == .regular && $0.processIdentifier != getpid() && !$0.isTerminated
+        }?.processIdentifier
     }
 
     /// The value of `kAXTrustedCheckOptionPrompt`. The constant itself is imported as a global
