@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+# A new push to the same branch cancels the run still going for the old one.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build and test
+    # macOS 26 so the runner's default Xcode matches the one the project is developed
+    # against. The deployment target is macOS 14, so the tests still exercise that floor.
+    runs-on: macos-26
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Logged rather than pinned with xcode-select: a bump to the runner's default shows
+      # up here, and CI never breaks because GitHub retired a hard-coded Xcode version.
+      - name: Show toolchain
+        run: xcodebuild -version
+
+      # Builds from the committed project.pbxproj rather than regenerating with XcodeGen,
+      # so a source file added to project.yml but never `xcodegen generate`d fails here
+      # instead of passing on a project only CI has ever seen.
+      - name: Build and test
+        run: |
+          xcodebuild \
+            -scheme Loadstone \
+            -destination 'platform=macOS' \
+            -derivedDataPath DerivedData \
+            -resultBundlePath TestResults.xcresult \
+            test
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: TestResults.xcresult
+          retention-days: 14
