@@ -29,127 +29,18 @@ Release builds sign with the maintainer's Developer ID (`project.yml`, Release c
 
 ## Releasing
 
-This is the **outside-the-App-Store** path (GitHub zip). App Store distribution is a separate track: Apple Distribution cert, sandbox, App Store Connect; notarization is not used there.
+Follow **`~/code/macos-github-release.md`** (shared across app repos). Loadstone-specific values:
 
-There is no release script. Do the steps below on a Mac that has:
+| | |
+|---|---|
+| Identity | `Developer ID Application: Morten Brudvik (3GS65HFAFH)` |
+| Team / Apple ID | `3GS65HFAFH` / `morten@brudvik.com` |
+| Notary profile | `loadstone` |
+| Scheme / app | `Loadstone` |
+| Nested bundle | `Contents/Resources/KeyboardShortcuts_KeyboardShortcuts.bundle` |
+| DerivedData | `/tmp/LoadstoneDerived` |
 
-- Xcode with Command Line Tools
-- Identity `Developer ID Application: Morten Brudvik (3GS65HFAFH)` in the login keychain (`security find-identity -v -p codesigning`)
-- Team ID `3GS65HFAFH`
-- `gh` authenticated to `mortenbrudvik`
-- A notarytool keychain profile named `loadstone` (see first-time setup below)
-
-### First-time notarytool setup
-
-Apple ID 2FA cannot be used directly. Create an **app-specific password** at [appleid.apple.com](https://appleid.apple.com/account/manage) → Sign-In and Security → App-Specific Passwords. It authenticates the maintainer's Apple ID to the notary service, not Loadstone users, and is not embedded in the app. Store it once:
-
-```bash
-xcrun notarytool store-credentials "loadstone" \
-  --apple-id "morten@brudvik.com" \
-  --team-id "3GS65HFAFH"
-```
-
-It prompts for the app-specific password and saves it in the Keychain. Later commands use `--keychain-profile "loadstone"`. Confirm with `xcrun notarytool history --keychain-profile loadstone`.
-
-### Cut a version
-
-1. Bump `MARKETING_VERSION` (user-facing, e.g. `0.1.2`) and `CURRENT_PROJECT_VERSION` (integer build, always increment) in `project.yml`.
-2. Regenerate so the committed `project.pbxproj` matches:
-
-```bash
-xcodegen generate
-```
-
-3. Commit the bump (and any product changes that belong in the release) and push `main`.
-4. Run tests:
-
-```bash
-xcodebuild -scheme Loadstone -configuration Debug -destination 'platform=macOS' \
-  -derivedDataPath /tmp/LoadstoneDerived test
-```
-
-Expect `TEST SUCCEEDED`. Do not ship if tests fail.
-
-5. Build Release (arm64, Developer ID, hardened runtime, timestamp):
-
-```bash
-xcodebuild -scheme Loadstone -configuration Release -destination 'platform=macOS' \
-  -derivedDataPath /tmp/LoadstoneDerived build
-```
-
-6. Sign the nested KeyboardShortcuts resource bundle, then re-sign the app. Notarization rejects an unsigned nested bundle even when the outer app verifies:
-
-```bash
-IDENTITY="Developer ID Application: Morten Brudvik (3GS65HFAFH)"
-APP="/tmp/LoadstoneDerived/Build/Products/Release/Loadstone.app"
-ENT="/tmp/LoadstoneDerived/Build/Intermediates.noindex/Loadstone.build/Release/Loadstone.build/Loadstone.app.xcent"
-
-codesign --force --options runtime --timestamp --sign "$IDENTITY" \
-  "$APP/Contents/Resources/KeyboardShortcuts_KeyboardShortcuts.bundle"
-codesign --force --options runtime --timestamp --entitlements "$ENT" \
-  --sign "$IDENTITY" "$APP"
-codesign --verify --deep --strict --verbose=2 "$APP"
-```
-
-7. Zip with `ditto` (preserves the bundle and signature; do not use `zip`):
-
-```bash
-ZIP=/tmp/Loadstone-0.1.2.zip    # match MARKETING_VERSION
-ditto -c -k --keepParent "$APP" "$ZIP"
-```
-
-8. Notarize and wait until status is `Accepted`:
-
-```bash
-xcrun notarytool submit "$ZIP" --keychain-profile "loadstone" --wait
-```
-
-On `Invalid`, fetch the log: `xcrun notarytool log <submission-id> --keychain-profile loadstone`. Typical causes: unsigned nested code, missing hardened runtime, missing secure timestamp, `get-task-allow`.
-
-9. Staple the ticket onto the **app** (not the old zip), then re-zip so the download carries the staple:
-
-```bash
-xcrun stapler staple "$APP"
-xcrun stapler validate "$APP"
-spctl --assess --type execute -vv "$APP"
-# Expect: accepted / source=Notarized Developer ID
-ditto -c -k --keepParent "$APP" "$ZIP"
-```
-
-10. Install locally so the maintainer is running the same bits:
-
-```bash
-killall Loadstone 2>/dev/null || true
-rm -rf /Applications/Loadstone.app
-ditto "$APP" /Applications/Loadstone.app
-open /Applications/Loadstone.app
-defaults read /Applications/Loadstone.app/Contents/Info.plist CFBundleShortVersionString
-```
-
-11. Publish. Tag name is `v` + `MARKETING_VERSION`. If a leftover local tag exists (`git tag -l 'v*'`), delete it first (`git tag -d v0.1.2`) so `gh` can create it on `main`. `--target HEAD` is rejected by the API; use `main` after it has been pushed:
-
-```bash
-git push origin main
-gh release create v0.1.2 "$ZIP" \
-  --target main \
-  --title "Loadstone 0.1.2" \
-  --latest \
-  --notes-file - <<'EOF'
-Signed with Developer ID and notarized by Apple.
-
-### Get it
-Download the zip, unzip, drag Loadstone.app to Applications, then open it.
-
-If snapping fails after upgrading, remove Loadstone from Privacy & Security → Accessibility, add /Applications/Loadstone.app, turn it on, and Relaunch.
-
-### What’s new
-- (fill in)
-EOF
-```
-
-Accessibility TCC is keyed to the code signature. Same Developer ID as the previous install usually keeps the grant; an ad-hoc Debug build does not share it with `/Applications`.
-
-Do not commit app-specific passwords, `.p8` keys, or Keychain exports. The `loadstone` notary profile lives only in the maintainer's Keychain.
+Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`, then `xcodegen generate`. App Store is a separate track (sandbox + Apple Distribution); this repo ships GitHub zips only.
 
 Reading the app's logs: `log` is a zsh builtin, so use the full path, and info-level lines (startup summary, hotkey bindings) need `--info`:
 
