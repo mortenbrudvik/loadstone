@@ -29,6 +29,7 @@
 		B35C60A55FE7F60DB7F87862 /* StatusItemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FEE345C3623250DF1AFB1ED /* StatusItemController.swift */; };
 		B6DFA7B336DC635F774EAAF3 /* AXWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1CDAE58BD6791FED229995B /* AXWindow.swift */; };
 		BC85168F26B6828B1ECDCD8C /* WindowCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D63C71D2C8C769BE0692B7B2 /* WindowCommandTests.swift */; };
+		C27A4F96DDCAEA1795476AB4 /* AXWindowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA6962A7B1311A48FA73EE6 /* AXWindowTests.swift */; };
 		C6CD6AC4F6D939CE1D374D4D /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = CA09F1A6778BC56F094C3D33 /* KeyboardShortcuts */; };
 		D5BC4C7DC44E57B84EA845EC /* NativeTiling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66AC3ADD2ED55AE5514E49E3 /* NativeTiling.swift */; };
 		D79C34C5B4F1083B100EA94C /* AppSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82913A9E5C7D1BC4EE22181E /* AppSettingsTests.swift */; };
@@ -71,6 +72,7 @@
 		85A8982208C08862A2DC49CE /* Tile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tile.swift; sourceTree = "<group>"; };
 		878C9086B97A4F6A8F1A475D /* AccessibilityAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityAuth.swift; sourceTree = "<group>"; };
 		8B91E048D299E0D6FB4E2B69 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		8EA6962A7B1311A48FA73EE6 /* AXWindowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AXWindowTests.swift; sourceTree = "<group>"; };
 		913E358A2851201FAE39489B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		94624997BB12C2458C7933CC /* StatusItemControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemControllerTests.swift; sourceTree = "<group>"; };
 		965E0C57AA3C1091E001B770 /* MovableWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MovableWindow.swift; sourceTree = "<group>"; };
@@ -116,6 +118,7 @@
 			isa = PBXGroup;
 			children = (
 				82913A9E5C7D1BC4EE22181E /* AppSettingsTests.swift */,
+				8EA6962A7B1311A48FA73EE6 /* AXWindowTests.swift */,
 				BA0E9162033AFF675B68344B /* DragSnapTrackerTests.swift */,
 				A7081792E55EB4340B1BCC20 /* EdgeDragMonitorTests.swift */,
 				59F1E47A09C22FEE90F6108D /* NativeTilingTests.swift */,
@@ -335,6 +338,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C27A4F96DDCAEA1795476AB4 /* AXWindowTests.swift in Sources */,
 				D79C34C5B4F1083B100EA94C /* AppSettingsTests.swift in Sources */,
 				E084ACE42863BC72A35067A8 /* DragSnapTrackerTests.swift in Sources */,
 				480CE80A8B03FB14A8959CC9 /* EdgeDragMonitorTests.swift in Sources */,

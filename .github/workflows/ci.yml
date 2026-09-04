@@ -27,6 +27,9 @@ jobs:
       # Builds from the committed project.pbxproj rather than regenerating with XcodeGen,
       # so a source file added to project.yml but never `xcodegen generate`d fails here
       # instead of passing on a project only CI has ever seen.
+      # AXWindowTests is skipped here, not gated in code: it drives real Accessibility calls
+      # against real windows, and this runner has no window server that answers them — every
+      # test in it crashes the test host rather than failing. It runs on a developer machine.
       - name: Build and test
         run: |
           xcodebuild \
@@ -34,6 +37,7 @@ jobs:
             -destination 'platform=macOS' \
             -derivedDataPath DerivedData \
             -resultBundlePath TestResults.xcresult \
+            -skip-testing:LoadstoneTests/AXWindowTests \
             test
 
       - name: Upload test results
