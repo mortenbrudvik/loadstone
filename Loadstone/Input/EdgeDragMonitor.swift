@@ -1,18 +1,54 @@
 import AppKit
+import Combine
 
+/// Watches left-button drags system-wide and snaps a window dragged to a screen edge. The
+/// decisions live in `DragSnapTracker`; this class owns the event monitors, the preview, and
+/// the Accessibility lookups.
 @MainActor
 final class EdgeDragMonitor {
+    private let director: WindowDirector
+    private let settings: AppSettings
+    private let preview = SnapPreview()
+    private var tracker = DragSnapTracker<AXWindow>()
     private var globalMonitor: Any?
     private var localMonitor: Any?
+    private var settingObserver: AnyCancellable?
 
-    private var dragStart: CGPoint?
-    private var draggedWindow: AXWindow?
-    private var activeTile: Tile?
-    private var activeScreen: NSScreen?
-    private var preview = SnapPreview()
-    private let dragThreshold: CGFloat = 8
+    init(director: WindowDirector = .shared, settings: AppSettings = .shared) {
+        self.director = director
+        self.settings = settings
+    }
 
+    /// True while the mouse monitors are installed.
+    var isMonitoring: Bool {
+        globalMonitor != nil
+    }
+
+    /// Installs the monitors while drag snapping is on and removes them while it is off,
+    /// following the setting from then on. Calling it again is a no-op.
     func start() {
+        guard settingObserver == nil else { return }
+        settingObserver = settings.$dragSnappingEnabled.sink { [weak self] enabled in
+            // @Published delivers synchronously on the thread that set the value, and
+            // AppSettings is main-actor bound, so this is always the main thread.
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if enabled {
+                    self.install()
+                } else {
+                    self.uninstall()
+                }
+            }
+        }
+    }
+
+    func stop() {
+        settingObserver = nil
+        uninstall()
+    }
+
+    private func install() {
+        guard globalMonitor == nil else { return }
         let mask: NSEvent.EventTypeMask = [.leftMouseDown, .leftMouseDragged, .leftMouseUp]
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] event in
             self?.enqueue(event)
@@ -21,9 +57,31 @@ final class EdgeDragMonitor {
             self?.enqueue(event)
             return event
         }
+        if globalMonitor == nil {
+            Log.drag.error("could not install the global mouse monitor; drag snapping is off")
+        } else {
+            Log.drag.info("drag snapping on")
+        }
     }
 
-    /// Capture the pointer location immediately; hop to the main actor with that point.
+    private func uninstall() {
+        if let globalMonitor {
+            NSEvent.removeMonitor(globalMonitor)
+            self.globalMonitor = nil
+        }
+        if let localMonitor {
+            NSEvent.removeMonitor(localMonitor)
+            self.localMonitor = nil
+        }
+        tracker.reset()
+        preview.hide()
+        Log.drag.info("drag snapping off")
+    }
+
+    /// The monitor closure is not main-actor isolated under strict concurrency and NSEvent is not
+    /// Sendable, so pull out the two Sendable facts needed (event type, pointer in Cocoa screen
+    /// space) and hop. `NSEvent.mouseLocation` rather than `event.locationInWindow` because
+    /// global-monitor events carry no window.
     private nonisolated func enqueue(_ event: NSEvent) {
         let type = event.type
         let point = NSEvent.mouseLocation
@@ -33,57 +91,34 @@ final class EdgeDragMonitor {
     }
 
     private func handle(type: NSEvent.EventType, at point: CGPoint) {
-        guard AppSettings.shared.dragSnappingEnabled else {
-            reset()
-            return
-        }
-
         switch type {
         case .leftMouseDown:
-            dragStart = point
-            draggedWindow = AXWindow.atCocoaPoint(point) ?? AXWindow.focused()
-            activeTile = nil
-            activeScreen = nil
+            tracker.mouseDown(at: point)
+
         case .leftMouseDragged:
-            considerSnap(at: point)
+            let target = tracker.mouseDragged(
+                to: point,
+                displays: Display.all,
+                windowUnderPointer: { AXWindow.atCocoaPoint(point) },
+                originOf: { $0.cocoaFrame?.origin }
+            )
+            if let target {
+                preview.show(frame: target.tile.frame(in: target.display.visibleFrame))
+            } else {
+                preview.hide()
+            }
+
         case .leftMouseUp:
-            commit()
+            preview.hide()
+            guard let (window, target) = tracker.mouseUp() else { return }
+            let outcome = director.snap(target.tile, window: window, on: target.display)
+            if outcome != .moved {
+                Log.drag.error("snap to \(target.tile.rawValue, privacy: .public) failed: \(String(describing: outcome), privacy: .public)")
+                NSSound.beep()
+            }
+
         default:
             break
         }
-    }
-
-    private func considerSnap(at point: CGPoint) {
-        guard let dragStart, hypot(point.x - dragStart.x, point.y - dragStart.y) >= dragThreshold else { return }
-        guard let screen = ScreenGeometry.screen(containingCocoa: point) else {
-            preview.hide()
-            activeTile = nil
-            activeScreen = nil
-            return
-        }
-        let tile = SnapZones.tile(at: point, screenFrame: screen.frame)
-        activeTile = tile
-        activeScreen = screen
-        if let tile {
-            preview.show(tile, on: screen)
-        } else {
-            preview.hide()
-        }
-    }
-
-    private func commit() {
-        defer { reset() }
-        guard let tile = activeTile else { return }
-        let window = draggedWindow ?? AXWindow.focused()
-        guard let window else { return }
-        WindowDirector.shared.snap(tile, window: window)
-    }
-
-    private func reset() {
-        dragStart = nil
-        draggedWindow = nil
-        activeTile = nil
-        activeScreen = nil
-        preview.hide()
     }
 }

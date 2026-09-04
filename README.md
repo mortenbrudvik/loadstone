@@ -27,14 +27,14 @@ Loadstone sits in the menu bar and stays out of the way. When you need two docs 
 - **Halves** — left, right, top, bottom
 - **Corners** — four quarters
 - **Thirds** — left, center, right, plus two-thirds
-- **Maximize, center, restore** — restore returns the window to the size it had before the first snap
-- **Drag to snap** — edges for halves, corners for quarters, top to maximize, bottom for thirds
+- **Maximize, center, restore** — restore puts the window back where it was before Loadstone first moved it
+- **Drag to snap** — edges for halves, corners for quarters, top to maximize, bottom for thirds. Only a window that is actually being dragged snaps; selecting text or dragging a slider near an edge does nothing
 - **Multi-display** — send a window to the next or previous screen
 - **Custom shortcuts** — Magnet-style defaults, all editable
 - **Launch at login** — optional, from Settings
-- **Portrait screens** — thirds run along the long sides
+- **Portrait screens** — the side edges split three ways along their length (corner, vertical third, corner); the bottom edge gives halves
 
-Loadstone turns off macOS’s built-in “drag to tile” while it is running, so the two systems don’t fight.
+Loadstone turns off macOS’s built-in “drag to tile” (System Settings → Desktop & Dock → Windows) while it is running, so the two systems don’t fight, and turns it back on when it quits. If Loadstone is force-quit or crashes, re-enable it there yourself.
 
 ## Default shortcuts
 
@@ -71,7 +71,7 @@ Apple Silicon (arm64) only, macOS 14+.
 
 ### Accessibility (required)
 
-Loadstone moves other apps’ windows through the Accessibility API. macOS will not apply the permission until the app restarts.
+Loadstone moves other apps’ windows through the Accessibility API. macOS will not apply the permission until the app restarts, and it ties the permission to the app’s code signature, so a rebuilt or updated app can look enabled in the list without being so. That is why step 2 removes the old entry.
 
 1. System Settings → **Privacy & Security** → **Accessibility**
 2. If Loadstone is already listed, select it and click **−**
@@ -92,8 +92,11 @@ brew install xcodegen
 git clone https://github.com/mortenbrudvik/loadstone.git
 cd loadstone
 xcodegen
-xcodebuild -scheme Loadstone -configuration Release -destination 'platform=macOS' build
+xcodebuild -scheme Loadstone -configuration Release -destination 'platform=macOS' \
+  CODE_SIGN_IDENTITY=- ENABLE_HARDENED_RUNTIME=NO OTHER_CODE_SIGN_FLAGS= build
 ```
+
+The Release configuration is set up to sign with the maintainer’s Developer ID. The overrides above fall back to an ad-hoc signature so the build works on any Mac.
 
 Copy the built app into Applications (path will include your DerivedData folder):
 
@@ -121,6 +124,9 @@ Loadstone is a menu-bar-only app (`LSUIElement`). Shortcuts and drag gestures go
 2. Converts between Cocoa and Accessibility coordinates
 3. Lays out a tile against the screen’s **visible frame**
 4. Sets size, then position, then size again so the window survives a display change
+5. Reports what the app answered: a window that refuses to move makes Loadstone beep and log to Console (subsystem `com.brudvik.loadstone`)
+
+Drag snapping only arms once the window under the pointer has actually moved, so a text selection or a slider dragged to a screen edge is left alone.
 
 It is **not sandboxed**. App Sandbox blocks the Accessibility calls this kind of tool needs.
 

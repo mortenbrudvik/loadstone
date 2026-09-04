@@ -45,6 +45,8 @@ targets:
           ENABLE_HARDENED_RUNTIME: true
           CODE_SIGN_IDENTITY: "Developer ID Application: Morten Brudvik (3GS65HFAFH)"
           OTHER_CODE_SIGN_FLAGS: --timestamp
+          # The README promises an Apple Silicon-only download; without this a Release build is universal.
+          ARCHS: arm64
     dependencies:
       - package: KeyboardShortcuts
       - sdk: ApplicationServices.framework
@@ -63,3 +65,20 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.brudvik.loadstone.tests
     dependencies:
       - target: Loadstone
+
+# A committed scheme so `xcodebuild -scheme Loadstone test` works in CI without Xcode
+# autocreating one first.
+schemes:
+  Loadstone:
+    build:
+      targets:
+        Loadstone: all
+        LoadstoneTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - LoadstoneTests
+    archive:
+      config: Release

@@ -1,4 +1,5 @@
 import Foundation
+import KeyboardShortcuts
 
 /// A named screen tile, computed against a bottom-left origin work area (Cocoa space).
 enum Tile: String, CaseIterable, Sendable {
@@ -16,50 +17,140 @@ enum Tile: String, CaseIterable, Sendable {
     case leftTwoThirds
     case rightTwoThirds
     case maximize
+
+    var title: String {
+        switch self {
+        case .leftHalf: return "Left Half"
+        case .rightHalf: return "Right Half"
+        case .topHalf: return "Top Half"
+        case .bottomHalf: return "Bottom Half"
+        case .topLeft: return "Top Left Corner"
+        case .topRight: return "Top Right Corner"
+        case .bottomLeft: return "Bottom Left Corner"
+        case .bottomRight: return "Bottom Right Corner"
+        case .leftThird: return "Left Third"
+        case .centerThird: return "Center Third"
+        case .rightThird: return "Right Third"
+        case .leftTwoThirds: return "Left Two Thirds"
+        case .rightTwoThirds: return "Right Two Thirds"
+        case .maximize: return "Maximize"
+        }
+    }
 }
 
-enum WindowCommand: Equatable, Sendable {
+/// Everything a user can ask Loadstone to do to a window. This is the single source of truth
+/// for the hotkey list, the status-bar menu, and the Shortcuts settings pane: adding a case
+/// (or a `Tile`) fails to compile until `id`, `title`, `defaultShortcut`, and `section` cover it,
+/// and then it appears everywhere automatically.
+enum WindowCommand: Hashable, Sendable {
     case tile(Tile)
     case center
     case restore
     case nextDisplay
     case previousDisplay
 
-    var menuTitle: String {
+    /// Every command, in menu and settings order.
+    static let all: [WindowCommand] =
+        Tile.allCases.map(WindowCommand.tile) + [.center, .restore, .nextDisplay, .previousDisplay]
+
+    /// Persistence key. KeyboardShortcuts stores a user's custom binding in UserDefaults under
+    /// "KeyboardShortcuts_<id>", so an id must never change once shipped: renaming one silently
+    /// discards that customization. `WindowCommandTests` pins the full list.
+    var id: String {
         switch self {
-        case .tile(.leftHalf): return "Left Half"
-        case .tile(.rightHalf): return "Right Half"
-        case .tile(.topHalf): return "Top Half"
-        case .tile(.bottomHalf): return "Bottom Half"
-        case .tile(.topLeft): return "Top Left Corner"
-        case .tile(.topRight): return "Top Right Corner"
-        case .tile(.bottomLeft): return "Bottom Left Corner"
-        case .tile(.bottomRight): return "Bottom Right Corner"
-        case .tile(.leftThird): return "Left Third"
-        case .tile(.centerThird): return "Center Third"
-        case .tile(.rightThird): return "Right Third"
-        case .tile(.leftTwoThirds): return "Left Two Thirds"
-        case .tile(.rightTwoThirds): return "Right Two Thirds"
-        case .tile(.maximize): return "Maximize"
+        case .tile(let tile): return tile.rawValue
+        case .center: return "center"
+        case .restore: return "restore"
+        case .nextDisplay: return "nextDisplay"
+        case .previousDisplay: return "previousDisplay"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .tile(let tile): return tile.title
         case .center: return "Center"
         case .restore: return "Restore"
         case .nextDisplay: return "Next Display"
         case .previousDisplay: return "Previous Display"
         }
     }
+
+    /// Magnet-style defaults: Control-Option plus a key, Control-Option-Command for displays.
+    /// The corner keys U I / J K form a square on the keyboard.
+    var defaultShortcut: KeyboardShortcuts.Shortcut {
+        switch self {
+        case .tile(.leftHalf): return .init(.leftArrow, modifiers: [.control, .option])
+        case .tile(.rightHalf): return .init(.rightArrow, modifiers: [.control, .option])
+        case .tile(.topHalf): return .init(.upArrow, modifiers: [.control, .option])
+        case .tile(.bottomHalf): return .init(.downArrow, modifiers: [.control, .option])
+        case .tile(.topLeft): return .init(.u, modifiers: [.control, .option])
+        case .tile(.topRight): return .init(.i, modifiers: [.control, .option])
+        case .tile(.bottomLeft): return .init(.j, modifiers: [.control, .option])
+        case .tile(.bottomRight): return .init(.k, modifiers: [.control, .option])
+        case .tile(.leftThird): return .init(.d, modifiers: [.control, .option])
+        case .tile(.centerThird): return .init(.f, modifiers: [.control, .option])
+        case .tile(.rightThird): return .init(.g, modifiers: [.control, .option])
+        case .tile(.leftTwoThirds): return .init(.e, modifiers: [.control, .option])
+        case .tile(.rightTwoThirds): return .init(.t, modifiers: [.control, .option])
+        case .tile(.maximize): return .init(.return, modifiers: [.control, .option])
+        case .center: return .init(.c, modifiers: [.control, .option])
+        case .restore: return .init(.delete, modifiers: [.control, .option])
+        case .nextDisplay: return .init(.rightArrow, modifiers: [.control, .option, .command])
+        case .previousDisplay: return .init(.leftArrow, modifiers: [.control, .option, .command])
+        }
+    }
+
+    /// The KeyboardShortcuts handle for this command. Built once per command: creating a `Name`
+    /// is what tells the library about the default binding.
+    var hotkeyName: KeyboardShortcuts.Name {
+        Self.hotkeyNames[self]!
+    }
+
+    private static let hotkeyNames: [WindowCommand: KeyboardShortcuts.Name] = Dictionary(
+        uniqueKeysWithValues: all.map { ($0, KeyboardShortcuts.Name($0.id, default: $0.defaultShortcut)) }
+    )
+
+    /// Groups separated by a divider in the status-bar menu.
+    enum Section: CaseIterable {
+        case halves, corners, thirds, whole, displays
+    }
+
+    var section: Section {
+        switch self {
+        case .tile(.leftHalf), .tile(.rightHalf), .tile(.topHalf), .tile(.bottomHalf):
+            return .halves
+        case .tile(.topLeft), .tile(.topRight), .tile(.bottomLeft), .tile(.bottomRight):
+            return .corners
+        case .tile(.leftThird), .tile(.centerThird), .tile(.rightThird), .tile(.leftTwoThirds), .tile(.rightTwoThirds):
+            return .thirds
+        case .tile(.maximize), .center, .restore:
+            return .whole
+        case .nextDisplay, .previousDisplay:
+            return .displays
+        }
+    }
+
+    static var sections: [[WindowCommand]] {
+        Section.allCases.map { section in all.filter { $0.section == section } }
+    }
 }
 
 extension Tile {
-    /// Lays this tile into `workArea`. Origin is bottom-left.
+    /// Lays this tile into `workArea`.
     func frame(in workArea: CGRect) -> CGRect {
         let x = workArea.minX
         let y = workArea.minY
         let w = workArea.width
         let h = workArea.height
+        // Floor the left/bottom pieces and give the remainder to the right/top ones, so
+        // complementary tiles sum to the work area exactly with no 1pt seam or overlap on
+        // widths that do not divide evenly. `leftTwoThirds` must end where `rightThird`
+        // starts (2 * thirdW), not at `w - thirdW`, or the two overlap on widths ≢ 0 mod 3.
         let halfW = (w / 2).rounded(.towardZero)
         let halfH = (h / 2).rounded(.towardZero)
         let thirdW = (w / 3).rounded(.towardZero)
-        let twoThirdsW = w - thirdW
+        let twoThirdsW = 2 * thirdW
 
         switch self {
         case .leftHalf:
@@ -95,10 +186,18 @@ extension Tile {
 }
 
 enum SnapZones {
+    /// Depth of the edge bands, and how far past an outer edge the pointer may overshoot.
     static let edgeThickness: CGFloat = 16
+    /// Side of the square corner zones. Tuned by feel, like `edgeThickness`.
     static let cornerSize: CGFloat = 140
 
-    /// Detects a Magnet-style snap tile from a Cocoa-space mouse point against the full screen frame.
+    /// Detects a Magnet-style snap tile from a Cocoa-space pointer against the *full* screen
+    /// frame (the tile itself is later laid into the visible frame). Priority: the corner
+    /// squares (`cornerSize`²) beat everything, then the top band (maximize), then the side
+    /// bands, then the bottom band. Bands are `edgeThickness` deep and extend the same distance
+    /// outside the frame so an overshoot past an outer edge still counts.
+    /// Portrait (height > width): the side bands split along their length into bottom quarter /
+    /// full-height third / top quarter, and the bottom band gives halves rather than thirds.
     static func tile(at point: CGPoint, screenFrame: CGRect) -> Tile? {
         let f = screenFrame
         let padded = f.insetBy(dx: -edgeThickness, dy: -edgeThickness)
@@ -126,7 +225,7 @@ enum SnapZones {
         let portrait = f.height > f.width
         if portrait {
             if nearLeft || nearRight {
-                return thirdAlongHeight(y, frame: f, leftSide: nearLeft)
+                return thirdAlongHeight(y, frame: f, side: nearLeft ? .left : .right)
             }
             if nearBottom { return x < f.midX ? .leftHalf : .rightHalf }
             return nil
@@ -138,6 +237,8 @@ enum SnapZones {
         return nil
     }
 
+    private enum Side { case left, right }
+
     private static func thirdAlongWidth(_ x: CGFloat, frame: CGRect) -> Tile {
         let t = (x - frame.minX) / max(frame.width, 1)
         if t < 1.0 / 3.0 { return .leftThird }
@@ -145,20 +246,23 @@ enum SnapZones {
         return .rightThird
     }
 
-    private static func thirdAlongHeight(_ y: CGFloat, frame: CGRect, leftSide: Bool) -> Tile {
+    private static func thirdAlongHeight(_ y: CGFloat, frame: CGRect, side: Side) -> Tile {
         let t = (y - frame.minY) / max(frame.height, 1)
-        if leftSide {
+        switch side {
+        case .left:
             if t < 1.0 / 3.0 { return .bottomLeft }
             if t < 2.0 / 3.0 { return .leftThird }
             return .topLeft
+        case .right:
+            if t < 1.0 / 3.0 { return .bottomRight }
+            if t < 2.0 / 3.0 { return .rightThird }
+            return .topRight
         }
-        if t < 1.0 / 3.0 { return .bottomRight }
-        if t < 2.0 / 3.0 { return .rightThird }
-        return .topRight
     }
 }
 
 enum Layout {
+    /// Keeps the window's size (clamped to the work area) and centres it.
     static func centered(_ current: CGRect, in workArea: CGRect) -> CGRect {
         let width = min(current.width, workArea.width)
         let height = min(current.height, workArea.height)
@@ -170,6 +274,9 @@ enum Layout {
         )
     }
 
+    /// Places `current` in `destination` at the same relative position and size it had in
+    /// `source`, so a half stays a half and a maximized window stays maximized on the new
+    /// display. A degenerate source yields the whole destination.
     static func mapped(_ current: CGRect, from source: CGRect, to destination: CGRect) -> CGRect {
         guard source.width > 0, source.height > 0 else { return destination }
         let rx = (current.minX - source.minX) / source.width

@@ -1,43 +1,60 @@
 import ApplicationServices
 import AppKit
 
+/// Accessibility permission: checking it, asking for it, and walking the user through the
+/// relaunch macOS requires before a new grant takes effect.
 @MainActor
 enum AccessibilityAuth {
-    private static var didAskThisSession = false
-    private static var watchTimer: Timer?
+    private static var didShowSystemPrompt = false
+    private static var didShowRelaunchAlert = false
 
+    /// What TCC says. Can be true while AX calls still fail; see `isEffectivelyTrusted`.
     static var isTrusted: Bool {
-        AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": false] as CFDictionary)
+        AXIsProcessTrustedWithOptions([promptOption: false] as CFDictionary)
     }
 
-    static func prompt() {
-        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
-        _ = AXIsProcessTrustedWithOptions(options)
+    /// Whether an actual Accessibility call succeeds. After a grant, or after a rebuild that
+    /// changed the code signature, `isTrusted` can say yes while every call answers
+    /// `.apiDisabled` until the app relaunches. This is what the Settings pane reports.
+    static var isEffectivelyTrusted: Bool {
+        var value: CFTypeRef?
+        let error = AXUIElementCopyAttributeValue(
+            AXUIElementCreateSystemWide(), kAXFocusedApplicationAttribute as CFString, &value
+        )
+        return error != .apiDisabled
     }
 
-    static func startWatching() {
-        watchTimer?.invalidate()
+    /// The value of `kAXTrustedCheckOptionPrompt`. The constant itself is imported as a global
+    /// `var`, which Swift 6 strict concurrency rejects as shared mutable state.
+    private static let promptOption = "AXTrustedCheckOptionPrompt"
+
+    /// Shows the system Accessibility dialog at launch when the permission is missing. That
+    /// dialog and the relaunch alert each appear at most once per launch.
+    static func promptAtLaunchIfNeeded() {
         guard !isTrusted else { return }
-        prompt()
-        watchTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            Task { @MainActor in
-                if isTrusted {
-                    watchTimer?.invalidate()
-                    watchTimer = nil
-                }
-            }
-        }
+        showSystemPromptOnce()
     }
 
-    /// Ask at most once per launch. Never reopen Settings on every snap.
+    /// Guards the command path: a command that fails because Accessibility is disabled shows
+    /// the system dialog (if not yet shown this launch) and the relaunch alert (once per launch),
+    /// never a dialog on every attempt.
     static func requestIfNeeded() {
-        guard !isTrusted else { return }
-        guard !didAskThisSession else { return }
-        didAskThisSession = true
-        prompt()
+        showSystemPromptOnce()
+        guard !didShowRelaunchAlert else { return }
+        didShowRelaunchAlert = true
         showRelaunchAlert()
     }
 
+    private static func showSystemPromptOnce() {
+        guard !didShowSystemPrompt else { return }
+        didShowSystemPrompt = true
+        _ = AXIsProcessTrustedWithOptions([promptOption: true] as CFDictionary)
+    }
+
+    /// Why "remove, then add again": TCC ties the grant to the code signature. Debug builds are
+    /// ad-hoc signed, so each rebuild is a new identity and the old row shows as on but does not
+    /// apply; re-adding re-keys it. Developer ID release builds keep a stable identity, so
+    /// release users normally only need steps 3 to 5.
     static func showRelaunchAlert() {
         let alert = NSAlert()
         alert.messageText = "Loadstone needs Accessibility"
@@ -64,16 +81,34 @@ enum AccessibilityAuth {
         }
     }
 
+    /// Quits and starts a fresh process, which is what makes a new Accessibility grant apply.
     static func relaunch() {
-        let appPath = Bundle.main.bundlePath
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/bash")
-        process.arguments = ["-c", "sleep 0.6; /usr/bin/open '\(appPath)'"]
-        try? process.run()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        // `open` on a bundle that is still running only activates the running instance, so wait
+        // for terminate(nil) to finish before asking LaunchServices for a new one; 0.6s is
+        // empirical. The bundle path is passed as an argument ($0), never spliced into the
+        // script, so quotes or spaces in it cannot break the command.
+        process.arguments = ["-c", "sleep 0.6; exec /usr/bin/open \"$0\"", Bundle.main.bundlePath]
+        do {
+            try process.run()
+        } catch {
+            Log.app.error("relaunch helper failed to start: \(error.localizedDescription, privacy: .public)")
+            let alert = NSAlert()
+            alert.messageText = "Loadstone could not relaunch itself"
+            alert.informativeText = "Quit Loadstone and open it again from Applications.\n\n\(error.localizedDescription)"
+            alert.runModal()
+            return
+        }
         NSApp.terminate(nil)
     }
 
     static func openSystemSettings() {
+        // Deep links, tried in order:
+        //   1. macOS 13+ System Settings, straight to the Accessibility pane
+        //   2. the pre-Ventura System Preferences anchor, which System Settings still maps
+        //   3. the Privacy & Security root, if the pane query is rejected
+        // Last resort: the app with no pane selected.
         let candidates = [
             "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Accessibility",
             "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
@@ -84,6 +119,8 @@ enum AccessibilityAuth {
                 return
             }
         }
-        NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/System Settings.app"))
+        if !NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/System Settings.app")) {
+            Log.app.error("could not open System Settings")
+        }
     }
 }

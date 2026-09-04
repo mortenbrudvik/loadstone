@@ -10,59 +10,47 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "rectangle.split.2x1", accessibilityDescription: "Loadstone")
-            button.image?.isTemplate = true
+            if let image = NSImage(systemSymbolName: "rectangle.split.2x1", accessibilityDescription: "Loadstone") {
+                image.isTemplate = true
+                button.image = image
+            } else {
+                // Without an image the status item would be an invisible, unclickable-looking gap.
+                assertionFailure("status bar symbol is missing")
+                button.title = "Loadstone"
+            }
         }
         let menu = buildMenu()
         menu.delegate = self
         statusItem.menu = menu
     }
 
+    // Required by KeyboardShortcuts once menu items show their shortcut via setShortcut(for:):
+    // NSMenu runs the thread in tracking mode, so Carbon hot-key events would queue up and all
+    // fire at once when the menu closes. Disabling them while it is open drops them instead.
     func menuWillOpen(_ menu: NSMenu) {
-        KeyboardShortcuts.disable(HotkeyMap.names)
+        KeyboardShortcuts.disable(WindowCommand.all.map(\.hotkeyName))
     }
 
     func menuDidClose(_ menu: NSMenu) {
-        KeyboardShortcuts.enable(HotkeyMap.names)
+        KeyboardShortcuts.enable(WindowCommand.all.map(\.hotkeyName))
     }
 
     private func buildMenu() -> NSMenu {
         let menu = NSMenu()
 
-        func add(_ command: WindowCommand) {
-            let item = NSMenuItem(title: command.menuTitle, action: #selector(runCommand(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = Box(command)
-            if let name = HotkeyMap.name(for: command) {
-                item.setShortcut(for: name)
+        for section in WindowCommand.sections {
+            for command in section {
+                let item = NSMenuItem(title: command.title, action: #selector(runCommand(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = command
+                item.setShortcut(for: command.hotkeyName)
+                menu.addItem(item)
             }
-            menu.addItem(item)
+            menu.addItem(.separator())
         }
 
-        add(.tile(.leftHalf))
-        add(.tile(.rightHalf))
-        add(.tile(.topHalf))
-        add(.tile(.bottomHalf))
-        menu.addItem(.separator())
-        add(.tile(.topLeft))
-        add(.tile(.topRight))
-        add(.tile(.bottomLeft))
-        add(.tile(.bottomRight))
-        menu.addItem(.separator())
-        add(.tile(.leftThird))
-        add(.tile(.centerThird))
-        add(.tile(.rightThird))
-        add(.tile(.leftTwoThirds))
-        add(.tile(.rightTwoThirds))
-        menu.addItem(.separator())
-        add(.tile(.maximize))
-        add(.center)
-        add(.restore)
-        menu.addItem(.separator())
-        add(.nextDisplay)
-        add(.previousDisplay)
-        menu.addItem(.separator())
-
+        // Key equivalents shown here only work while the menu is open; an LSUIElement app has
+        // no main menu for them to live in.
         let prefs = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         prefs.target = self
         menu.addItem(prefs)
@@ -77,8 +65,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     @objc private func runCommand(_ sender: NSMenuItem) {
-        guard let box = sender.representedObject as? Box<WindowCommand> else { return }
-        WindowDirector.shared.perform(box.value)
+        guard let command = sender.representedObject as? WindowCommand else {
+            assertionFailure("menu item without a WindowCommand: \(sender.title)")
+            return
+        }
+        WindowDirector.shared.perform(command)
     }
 
     @objc private func openSettings() {
@@ -88,9 +79,4 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func relaunch() {
         AccessibilityAuth.relaunch()
     }
-}
-
-private final class Box<T> {
-    let value: T
-    init(_ value: T) { self.value = value }
 }
