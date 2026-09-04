@@ -23,6 +23,14 @@ extension KeyboardShortcuts.Name {
 }
 
 enum HotkeyMap {
+    static var names: [KeyboardShortcuts.Name] {
+        bindings.map(\.0)
+    }
+
+    static func name(for command: WindowCommand) -> KeyboardShortcuts.Name? {
+        bindings.first { $0.1 == command }?.0
+    }
+
     static let bindings: [(KeyboardShortcuts.Name, WindowCommand)] = [
         (.leftHalf, .tile(.leftHalf)),
         (.rightHalf, .tile(.rightHalf)),

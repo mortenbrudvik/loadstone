@@ -1,7 +1,8 @@
 import AppKit
+import KeyboardShortcuts
 
 @MainActor
-final class StatusItemController: NSObject {
+final class StatusItemController: NSObject, NSMenuDelegate {
     private let statusItem: NSStatusItem
     private let settings = SettingsWindowController()
 
@@ -12,7 +13,17 @@ final class StatusItemController: NSObject {
             button.image = NSImage(systemSymbolName: "rectangle.split.2x1", accessibilityDescription: "Loadstone")
             button.image?.isTemplate = true
         }
-        statusItem.menu = buildMenu()
+        let menu = buildMenu()
+        menu.delegate = self
+        statusItem.menu = menu
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        KeyboardShortcuts.disable(HotkeyMap.names)
+    }
+
+    func menuDidClose(_ menu: NSMenu) {
+        KeyboardShortcuts.enable(HotkeyMap.names)
     }
 
     private func buildMenu() -> NSMenu {
@@ -22,6 +33,9 @@ final class StatusItemController: NSObject {
             let item = NSMenuItem(title: command.menuTitle, action: #selector(runCommand(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = Box(command)
+            if let name = HotkeyMap.name(for: command) {
+                item.setShortcut(for: name)
+            }
             menu.addItem(item)
         }
 
