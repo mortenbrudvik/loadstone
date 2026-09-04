@@ -65,10 +65,7 @@ J  K
 
 Grab **Loadstone.app** from the [latest release](https://github.com/mortenbrudvik/loadstone/releases/latest), unzip it, and drag it to **Applications**.
 
-The build is not Apple-notarized (no Developer ID yet). First launch:
-
-1. **Right-click** Loadstone → **Open** → **Open**
-2. Or System Settings → Privacy & Security → **Open Anyway**
+The release is signed with Developer ID and **notarized by Apple**, so Gatekeeper should accept a normal double-click.
 
 Apple Silicon (arm64) only, macOS 14+.
 
@@ -105,7 +102,7 @@ ditto "$(find ~/Library/Developer/Xcode/DerivedData -path '*/Build/Products/Rele
 open /Applications/Loadstone.app
 ```
 
-Then grant Accessibility as above. First launch of an unsigned build: **Right-click → Open**.
+Then grant Accessibility as above.
 
 ## Build and test
 

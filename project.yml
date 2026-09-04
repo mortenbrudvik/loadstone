@@ -23,13 +23,14 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.brudvik.loadstone
         PRODUCT_NAME: Loadstone
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "0.1.1"
+        CURRENT_PROJECT_VERSION: "2"
         INFOPLIST_FILE: Loadstone/App/Info.plist
         CODE_SIGN_ENTITLEMENTS: Loadstone/App/Loadstone.entitlements
         ENABLE_HARDENED_RUNTIME: false
         CODE_SIGN_IDENTITY: "-"
         CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+        DEVELOPMENT_TEAM: 3GS65HFAFH
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
         MACOSX_DEPLOYMENT_TARGET: "14.0"
@@ -40,6 +41,10 @@ targets:
       configs:
         Debug:
           ENABLE_TESTABILITY: YES
+        Release:
+          ENABLE_HARDENED_RUNTIME: true
+          CODE_SIGN_IDENTITY: "Developer ID Application: Morten Brudvik (3GS65HFAFH)"
+          OTHER_CODE_SIGN_FLAGS: --timestamp
     dependencies:
       - package: KeyboardShortcuts
       - sdk: ApplicationServices.framework
