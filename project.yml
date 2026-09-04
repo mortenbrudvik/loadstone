@@ -23,8 +23,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.brudvik.loadstone
         PRODUCT_NAME: Loadstone
-        MARKETING_VERSION: "0.1.2"
-        CURRENT_PROJECT_VERSION: "3"
+        MARKETING_VERSION: "0.2.0"
+        CURRENT_PROJECT_VERSION: "4"
         INFOPLIST_FILE: Loadstone/App/Info.plist
         CODE_SIGN_ENTITLEMENTS: Loadstone/App/Loadstone.entitlements
         ENABLE_HARDENED_RUNTIME: false
