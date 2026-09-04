@@ -189,4 +189,6 @@ A lodestone is a naturally magnetic rock. Loadstone is the window magnet.
 
 ## License
 
-No license file yet — all rights reserved until one is chosen.
+[MIT](LICENSE) © 2026 Morten Brudvik.
+
+Loadstone bundles [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts), © Sindre Sorhus, also under the [MIT License](https://github.com/sindresorhus/KeyboardShortcuts/blob/main/license).
