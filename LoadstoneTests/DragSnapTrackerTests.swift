@@ -24,10 +24,15 @@ final class DragSnapTrackerTests: XCTestCase {
         var origin: CGPoint? = CGPoint(x: 400, y: 400)
         var lookups = 0
         var originReads = 0
+        /// Event time. Tests that do not care pass no `at:` and get events a full second apart,
+        /// which is far outside any poll interval, so throttling never affects them.
+        private var clock: TimeInterval = 0
 
-        func drag(to point: CGPoint, displays: [Display]) -> DragSnapTracker<FakeWindow>.Target? {
-            tracker.mouseDragged(
+        func drag(to point: CGPoint, at time: TimeInterval? = nil, displays: [Display]) -> DragSnapTracker<FakeWindow>.Target? {
+            clock = time ?? clock + 1
+            return tracker.mouseDragged(
                 to: point,
+                at: clock,
                 displays: displays,
                 windowUnderPointer: { self.lookups += 1; return self.windowUnderPointer },
                 originOf: { _ in self.originReads += 1; return self.origin }
@@ -142,5 +147,36 @@ final class DragSnapTrackerTests: XCTestCase {
         h.tracker.reset()
 
         XCTAssertNil(h.tracker.mouseUp())
+    }
+
+    func testTheWindowOriginIsNotPolledOnEveryEventWhileWaitingForTheWindowToMove() {
+        let h = Harness()
+        h.tracker.mouseDown(at: CGPoint(x: 500, y: 500))
+        _ = h.drag(to: CGPoint(x: 300, y: 500), at: 0, displays: displays)
+        XCTAssertEqual(h.originReads, 1, "baseline read when the threshold is passed")
+
+        // A slider drag parked in a snap zone: the window never moves, and a real drag delivers
+        // events far faster than the poll interval. Each read is an AX round trip on the main
+        // thread that can block for the messaging timeout, so they must not track event rate.
+        _ = h.drag(to: CGPoint(x: 2, y: 540), at: 0.100, displays: displays)
+        _ = h.drag(to: CGPoint(x: 3, y: 541), at: 0.108, displays: displays)
+        _ = h.drag(to: CGPoint(x: 4, y: 542), at: 0.116, displays: displays)
+        _ = h.drag(to: CGPoint(x: 5, y: 543), at: 0.124, displays: displays)
+        XCTAssertEqual(h.originReads, 2, "one poll on entering the zone, then throttled")
+
+        _ = h.drag(to: CGPoint(x: 6, y: 544), at: 0.400, displays: displays)
+        XCTAssertEqual(h.originReads, 3, "polls again once the interval has elapsed")
+    }
+
+    func testThrottlingStillArmsOnceTheWindowHasMoved() {
+        let h = Harness()
+        h.tracker.mouseDown(at: CGPoint(x: 500, y: 500))
+        _ = h.drag(to: CGPoint(x: 300, y: 500), at: 0, displays: displays)
+        moveWindow(h, by: CGPoint(x: -298, y: 40))
+
+        XCTAssertNil(h.drag(to: CGPoint(x: 2, y: 540), at: 0.001, displays: displays),
+                     "the first in-zone event polls, but the throttle has not elapsed for a second look")
+        XCTAssertEqual(h.drag(to: CGPoint(x: 2, y: 540), at: 0.200, displays: displays),
+                       .init(tile: .leftHalf, display: primary))
     }
 }

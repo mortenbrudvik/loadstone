@@ -154,4 +154,24 @@ final class WindowDirectorTests: XCTestCase {
         XCTAssertEqual(director.perform(.tile(.leftHalf), on: window), .moved)
         XCTAssertEqual(director.perform(.restore, on: window), .nothingToRestore)
     }
+
+    func testARejectedCommandIsNotRememberedForRestore() {
+        let window = FakeWindow(frame: original)
+        let director = makeDirector()
+        window.rejectWith = .cannotComplete
+        XCTAssertEqual(director.perform(.tile(.leftHalf), on: window), .rejected(.cannotComplete))
+
+        window.rejectWith = nil
+        XCTAssertEqual(director.perform(.restore, on: window), .nothingToRestore,
+                       "a command the app refused must not leave a restore entry behind")
+    }
+
+    func testACommandThatNeverRanIsNotRememberedForRestore() {
+        let window = FakeWindow(frame: original)
+        let director = WindowDirector(displays: { [self.primary] })
+        XCTAssertEqual(director.perform(.nextDisplay, on: window), .noOtherDisplay)
+
+        XCTAssertEqual(director.perform(.restore, on: window), .nothingToRestore,
+                       "nothing moved, so there is nothing to restore to")
+    }
 }

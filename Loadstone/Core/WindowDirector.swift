@@ -56,24 +56,25 @@ final class WindowDirector {
     @discardableResult
     func perform(_ command: WindowCommand, on window: some MovableWindow) -> CommandOutcome {
         guard let current = window.cocoaFrame else { return .frameUnreadable }
-        // Restore must not record: it would store the current frame and then "restore" to it.
-        if command != .restore {
-            rememberIfNeeded(window, current: current)
-        }
         let displays = self.displays()
 
         switch command {
         case .tile(let tile):
             guard let display = display(for: current, in: displays) else { return .noDisplay }
-            return apply(tile.frame(in: display.visibleFrame), to: window)
+            return apply(tile.frame(in: display.visibleFrame), to: window, remembering: current)
         case .center:
             guard let display = display(for: current, in: displays) else { return .noDisplay }
-            return apply(Layout.centered(current, in: display.visibleFrame), to: window)
+            return apply(Layout.centered(current, in: display.visibleFrame), to: window, remembering: current)
         case .restore:
-            guard let key = window.identity, let original = originals.removeValue(forKey: key) else {
+            // Restore must not record: it would store the current frame and then "restore" to it.
+            // The memory is dropped only once the window has actually accepted the old frame, so
+            // an app that refuses the write can still be restored on a later attempt.
+            guard let key = window.identity, let original = originals[key] else {
                 return .nothingToRestore
             }
-            return apply(original, to: window)
+            let outcome = apply(original, to: window, remembering: nil)
+            if outcome == .moved { originals.removeValue(forKey: key) }
+            return outcome
         case .nextDisplay:
             return move(window, current: current, delta: 1, in: displays)
         case .previousDisplay:
@@ -86,8 +87,7 @@ final class WindowDirector {
     @discardableResult
     func snap(_ tile: Tile, window: some MovableWindow, on display: Display) -> CommandOutcome {
         guard let current = window.cocoaFrame else { return .frameUnreadable }
-        rememberIfNeeded(window, current: current)
-        return apply(tile.frame(in: display.visibleFrame), to: window)
+        return apply(tile.frame(in: display.visibleFrame), to: window, remembering: current)
     }
 
     /// Drops restore memory for every window of a process that has quit.
@@ -99,12 +99,18 @@ final class WindowDirector {
         guard let display = display(for: current, in: displays),
               let neighbor = ScreenGeometry.neighbor(of: display, delta: delta, in: displays) else { return .noDisplay }
         guard neighbor != display else { return .noOtherDisplay }
-        return apply(Layout.mapped(current, from: display.visibleFrame, to: neighbor.visibleFrame), to: window)
+        return apply(Layout.mapped(current, from: display.visibleFrame, to: neighbor.visibleFrame), to: window, remembering: current)
     }
 
-    private func apply(_ frame: CGRect, to window: some MovableWindow) -> CommandOutcome {
+    /// Writes `frame`, then records `previous` as the frame Restore should return to — but only
+    /// once the window has accepted the write. Recording afterwards rather than before is what
+    /// keeps a refused frame, or a command that never ran at all, from leaving behind a restore
+    /// entry that a later Restore would act on.
+    private func apply(_ frame: CGRect, to window: some MovableWindow, remembering previous: CGRect?) -> CommandOutcome {
         let error = window.setCocoaFrame(frame)
-        return error == .success ? .moved : .rejected(error)
+        guard error == .success else { return .rejected(error) }
+        if let previous { rememberIfNeeded(window, current: previous) }
+        return .moved
     }
 
     private func rememberIfNeeded(_ window: some MovableWindow, current: CGRect) {

@@ -14,6 +14,7 @@
 		2E23B07C49DF6D0321A4C659 /* HotkeyCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3C09E26C78784C1853A6888 /* HotkeyCenter.swift */; };
 		30655C3D0693C383C088231C /* ServiceManagement.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4AED1B49FC88388B461733A4 /* ServiceManagement.framework */; };
 		4650E1019A307F3D9152106E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 913E358A2851201FAE39489B /* Assets.xcassets */; };
+		480CE80A8B03FB14A8959CC9 /* EdgeDragMonitorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7081792E55EB4340B1BCC20 /* EdgeDragMonitorTests.swift */; };
 		6D7423DF71F71110EBB29ABD /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F205A796038BC75B0A26F02D /* AppSettings.swift */; };
 		77397281FAF63E71326DAEB1 /* Tile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A8982208C08862A2DC49CE /* Tile.swift */; };
 		7F18F16102A5B9E04B7D94FA /* SnapPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EE864239314E2235B8BB7F /* SnapPreview.swift */; };
@@ -73,6 +74,7 @@
 		913E358A2851201FAE39489B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		94624997BB12C2458C7933CC /* StatusItemControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemControllerTests.swift; sourceTree = "<group>"; };
 		965E0C57AA3C1091E001B770 /* MovableWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MovableWindow.swift; sourceTree = "<group>"; };
+		A7081792E55EB4340B1BCC20 /* EdgeDragMonitorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeDragMonitorTests.swift; sourceTree = "<group>"; };
 		A753485368B7B0B242F24A50 /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
 		A9499BB20C9560BBCC8D5F88 /* ScreenGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenGeometryTests.swift; sourceTree = "<group>"; };
 		B621493094581AED3DF756DE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -115,6 +117,7 @@
 			children = (
 				82913A9E5C7D1BC4EE22181E /* AppSettingsTests.swift */,
 				BA0E9162033AFF675B68344B /* DragSnapTrackerTests.swift */,
+				A7081792E55EB4340B1BCC20 /* EdgeDragMonitorTests.swift */,
 				59F1E47A09C22FEE90F6108D /* NativeTilingTests.swift */,
 				A9499BB20C9560BBCC8D5F88 /* ScreenGeometryTests.swift */,
 				E37C9082E49E57A9F3B0EBBA /* SnapZonesTests.swift */,
@@ -334,6 +337,7 @@
 			files = (
 				D79C34C5B4F1083B100EA94C /* AppSettingsTests.swift in Sources */,
 				E084ACE42863BC72A35067A8 /* DragSnapTrackerTests.swift in Sources */,
+				480CE80A8B03FB14A8959CC9 /* EdgeDragMonitorTests.swift in Sources */,
 				80FA3E79EDD89531DE64F90C /* NativeTilingTests.swift in Sources */,
 				7FCCC9082F2DD6666DBB33B5 /* ScreenGeometryTests.swift in Sources */,
 				15A5A481679D7BA92A582774 /* SnapZonesTests.swift in Sources */,

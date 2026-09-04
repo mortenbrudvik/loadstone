@@ -34,7 +34,7 @@ Loadstone sits in the menu bar and stays out of the way. When you need two docs 
 - **Launch at login** — optional, from Settings
 - **Portrait screens** — the side edges split three ways along their length (corner, vertical third, corner); the bottom edge gives halves
 
-Loadstone turns off macOS’s built-in “drag to tile” (System Settings → Desktop & Dock → Windows) while it is running, so the two systems don’t fight, and turns it back on when it quits. If Loadstone is force-quit or crashes, re-enable it there yourself.
+Loadstone turns off macOS’s built-in “drag to tile” (System Settings → Desktop & Dock → Windows) while it is running, so the two systems don’t fight, and turns it back on when it quits. If Loadstone is force-quit or crashes before it can put the setting back, the next launch notices and restores it.
 
 ## Default shortcuts
 
@@ -142,7 +142,7 @@ Menu bar → Loadstone → **Loadstone Help** opens this page.
 
 **Next / previous display beeps.** Only one display is attached.
 
-**macOS’s own edge tiling is off after Loadstone crashed or was force-quit.** Loadstone turns it off while running and back on when it quits normally. Re-enable it under System Settings → **Desktop & Dock** → **Windows**.
+**macOS’s own edge tiling is off after Loadstone crashed or was force-quit.** Loadstone turns it off while running and back on when it quits normally; after an unclean exit, simply launching Loadstone again restores it. To put it back by hand, use System Settings → **Desktop & Dock** → **Windows**.
 
 **Reading the log.** Loadstone reports to the unified log under the subsystem `com.brudvik.loadstone`. In Terminal:
 
