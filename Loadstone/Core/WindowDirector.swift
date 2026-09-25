@@ -96,14 +96,14 @@ final class WindowDirector {
                     if let beside = ScreenGeometry.adjacent(to: display, toward: continuation.toward, in: displays) {
                         Log.ax.info("\(command.id, privacy: .public): carrying on to the display at \(String(describing: beside.frame), privacy: .public)")
                         let onward = continuation.landing.frame(in: beside.visibleFrame)
-                        return place(window, key: key, at: onward, by: continuation.landing, from: current)
+                        return place(window, key: key, at: onward, by: continuation.landing, from: current).outcome
                     }
                     Log.ax.info("\(command.id, privacy: .public): in the half, with no display to the \(String(describing: continuation.toward), privacy: .public) of \(String(describing: display.frame), privacy: .public)")
                 } else {
-                    logWhyNotCarriedOn(tile, at: current, target: target, key: key)
+                    return fit(window, key: key, into: tile, at: target, from: current)
                 }
             }
-            return place(window, key: key, at: target, by: tile, from: current)
+            return place(window, key: key, at: target, by: tile, from: current).outcome
         case .center:
             guard let display = display(for: current, key: key, in: displays) else { return .noDisplay }
             return apply(Layout.centered(current, in: display.visibleFrame), to: window, key: key, from: current, remembering: current).outcome
@@ -129,7 +129,7 @@ final class WindowDirector {
     @discardableResult
     func snap(_ tile: Tile, window: some MovableWindow, on display: Display) -> CommandOutcome {
         guard let current = window.cocoaFrame else { return .frameUnreadable }
-        return place(window, key: window.identity, at: tile.frame(in: display.visibleFrame), by: tile, from: current)
+        return place(window, key: window.identity, at: tile.frame(in: display.visibleFrame), by: tile, from: current).outcome
     }
 
     /// Drops everything remembered about the windows of a process that has quit.
@@ -167,19 +167,21 @@ final class WindowDirector {
     /// under its centre, which is the one it came from, and it bounces between the two. Closing
     /// either would take watching the window, with an AXObserver recording where it settles and
     /// dropping the entry when it moves anywhere else.
-    private func place(_ window: some MovableWindow, key: WindowIdentity?, at target: CGRect, by tile: Tile, from current: CGRect) -> CommandOutcome {
+    ///
+    /// Returns the outcome and, when a placement was recorded, where the window landed.
+    private func place(_ window: some MovableWindow, key: WindowIdentity?, at target: CGRect, by tile: Tile, from current: CGRect) -> (outcome: CommandOutcome, landed: CGRect?) {
         let applied = apply(target, to: window, key: key, from: current, remembering: current)
-        guard applied.outcome == .moved, let key = applied.key else { return applied.outcome }
+        guard applied.outcome == .moved, let key = applied.key else { return (applied.outcome, nil) }
         guard let readBack = window.cocoaFrame else {
             Log.ax.info("\(tile.rawValue, privacy: .public): could not read the frame back, so the placement is not recorded")
-            return applied.outcome
+            return (applied.outcome, nil)
         }
-        if readBack.sharesTopLeft(with: target) {
-            placements[key] = Placement(tile: tile, target: target, landed: readBack)
-        } else {
+        guard readBack.sharesTopLeft(with: target) else {
             Log.ax.info("\(tile.rawValue, privacy: .public): read back \(String(describing: readBack), privacy: .public), off the top-left of \(String(describing: target), privacy: .public), so the placement is not recorded")
+            return (applied.outcome, nil)
         }
-        return applied.outcome
+        placements[key] = Placement(tile: tile, target: target, landed: readBack)
+        return (applied.outcome, readBack)
     }
 
     /// Whether a window at `current` is already in the tile whose frame is `target`: it fills the
@@ -193,20 +195,29 @@ final class WindowDirector {
             || standingPlacement(for: key, at: current)?.target.isWithinAPoint(of: target) == true
     }
 
-    /// Logs why Left or Right Half is fitting a window into the half rather than carrying it on,
-    /// where the press alone does not say. Either the window has a placement by this same tile
-    /// that no longer holds, because the window has moved since or the display has changed; or,
-    /// with no placement standing, the window has the half's top-left corner without filling it,
-    /// like a Terminal window Loadstone has not put there since it started, or one whose record
-    /// another command dropped. A first press into the half, and one on a window where another
-    /// tile put it, need no explaining.
-    private func logWhyNotCarriedOn(_ tile: Tile, at current: CGRect, target: CGRect, key: WindowIdentity?) {
-        guard let key else { return }
-        if let last = placements[key], last.tile == tile {
-            Log.ax.info("\(tile.rawValue, privacy: .public): the last placement no longer holds: the window is at \(String(describing: current), privacy: .public), was sent to \(String(describing: last.target), privacy: .public) and landed at \(String(describing: last.landed), privacy: .public); the tile is now \(String(describing: target), privacy: .public)")
-        } else if standingPlacement(for: key, at: current) == nil, current.sharesTopLeft(with: target) {
-            Log.ax.info("\(tile.rawValue, privacy: .public): the window at \(String(describing: current), privacy: .public) has the top-left of \(String(describing: target), privacy: .public) without filling it, and nothing records Loadstone putting it there, so it is fitted into the half first and the next press carries it on")
+    /// Fits a window that is not in the half `tile` into it, at `target`, and logs why it was not
+    /// carried on where the press alone does not say. Either the window had a placement by this
+    /// same tile that no longer held, because the window had moved since or the display had
+    /// changed; or it reads back where it was, so the press changed nothing that shows, like a
+    /// Terminal window Loadstone has not put in the half since it started, one whose record
+    /// another command dropped, or a minimum-width window that Left Third left where Left Half
+    /// leaves it too; or, with no placement standing, it had the half's top-left corner without
+    /// filling it, and the fit can be too small to see. A fit the window visibly takes, from
+    /// anywhere else or from where another tile put it, needs no explaining, and a refused one
+    /// is reported as a refusal.
+    private func fit(_ window: some MovableWindow, key: WindowIdentity?, into tile: Tile, at target: CGRect, from current: CGRect) -> CommandOutcome {
+        let last = key.flatMap { placements[$0] }
+        let hadStandingPlacement = standingPlacement(for: key, at: current) != nil
+        let placed = place(window, key: key, at: target, by: tile, from: current)
+        guard placed.outcome == .moved else { return placed.outcome }
+        if let last, last.tile == tile {
+            Log.ax.info("\(tile.rawValue, privacy: .public): the last placement no longer held: the window was at \(String(describing: current), privacy: .public), had been sent to \(String(describing: last.target), privacy: .public) and landed at \(String(describing: last.landed), privacy: .public); the tile is now \(String(describing: target), privacy: .public)")
+        } else if let landed = placed.landed, landed.isWithinAPoint(of: current) {
+            Log.ax.info("\(tile.rawValue, privacy: .public): nothing recorded the window at \(String(describing: current), privacy: .public) in this half, so it was fitted into \(String(describing: target), privacy: .public) and read back where it was; that is recorded as in the half, so the next press counts it as there")
+        } else if !hadStandingPlacement, current.sharesTopLeft(with: target) {
+            Log.ax.info("\(tile.rawValue, privacy: .public): the window at \(String(describing: current), privacy: .public) had the top-left of \(String(describing: target), privacy: .public) without filling it, and nothing recorded Loadstone putting it there, so it was fitted into the half rather than carried on")
         }
+        return placed.outcome
     }
 
     /// Writes `frame` to the window at `current`, then records `previous` as the frame Restore
