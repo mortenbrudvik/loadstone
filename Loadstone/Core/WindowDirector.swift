@@ -64,9 +64,10 @@ final class WindowDirector {
         }
     }
 
-    /// Runs `command` on `window`, on the display it is on: the one Loadstone last put it on while
-    /// it is still where it landed, otherwise the one under its centre. Left or Right Half on a
-    /// window already in that half carries it on to the display beside it.
+    /// Runs `command` on `window`. A tile or Center works on the display Loadstone last put the
+    /// window on while it is still where it landed, otherwise the one under its centre; Next and
+    /// Previous Display move it on from the one under its centre. Left or Right Half on a window
+    /// already in that half carries it on to the display beside it.
     @discardableResult
     func perform(_ command: WindowCommand, on window: some MovableWindow) -> CommandOutcome {
         guard let current = window.cocoaFrame else { return .frameUnreadable }
@@ -126,8 +127,12 @@ final class WindowDirector {
         placements = placements.filter { $0.key.pid != pid }
     }
 
+    /// Moves the window `delta` displays along from the one under its centre, mapping its frame
+    /// proportionally. That can differ from the display Loadstone put it on only when the window
+    /// is held wider than that display and mostly off it, and mapped from a display narrower
+    /// than itself the window would grow on the way, most of it past the edge of the desk.
     private func move(_ window: some MovableWindow, key: WindowIdentity?, current: CGRect, delta: Int, in displays: [Display]) -> CommandOutcome {
-        guard let display = display(for: current, key: key, in: displays),
+        guard let display = display(under: current, in: displays),
               let neighbor = ScreenGeometry.neighbor(of: display, delta: delta, in: displays) else { return .noDisplay }
         guard neighbor != display else { return .noOtherDisplay }
         let mapped = Layout.mapped(current, from: display.visibleFrame, to: neighbor.visibleFrame)
@@ -224,18 +229,23 @@ final class WindowDirector {
         originals[key] = frame
     }
 
-    /// The display a window at `frame` is on. While it is still where Loadstone last put it, that
-    /// is the display holding the frame it was sent to: a window held wider than that display
-    /// spills onto the next, and its centre can land there, which would send the next command
-    /// from the wrong display. Otherwise the display under the window's centre, or the primary
-    /// display when the window is off every display (after a disconnect) so it can still be
-    /// brought back.
+    /// The display a tile or Center works on for a window at `frame`. While the window is still
+    /// where Loadstone last put it, that is the display holding the frame it was sent to: a
+    /// window held wider than that display spills onto the next, and its centre can land there,
+    /// which would send the next half from the wrong display and bounce the window between the
+    /// two. Otherwise the display under its centre.
     private func display(for frame: CGRect, key: WindowIdentity?, in displays: [Display]) -> Display? {
         if let placement = standingPlacement(for: key, at: frame),
            let placedOn = ScreenGeometry.display(containing: placement.target, in: displays) {
             return placedOn
         }
-        return ScreenGeometry.display(containing: frame, in: displays) ?? displays.first
+        return display(under: frame, in: displays)
+    }
+
+    /// The display under the centre of a window at `frame`, or the primary display when the
+    /// window is off every display (after a disconnect) so it can still be brought back.
+    private func display(under frame: CGRect, in displays: [Display]) -> Display? {
+        ScreenGeometry.display(containing: frame, in: displays) ?? displays.first
     }
 
     /// The window's placement while the window at `frame` is still where it landed, to within a

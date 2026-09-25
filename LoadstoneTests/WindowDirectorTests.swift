@@ -303,7 +303,7 @@ final class WindowDirectorTests: XCTestCase {
         ])
     }
 
-    func testNextDisplayMovesAWindowOnFromTheDisplayItWasPlacedOn() throws {
+    func testCenterWorksOnTheDisplayAWiderWindowWasPlacedOn() throws {
         // As above, the right half of the left display leaves this window's centre on primary.
         let window = FakeWindow(frame: CGRect(x: -1400, y: 100, width: 1501, height: 600))
         window.minimumWidth = 1501
@@ -311,8 +311,24 @@ final class WindowDirectorTests: XCTestCase {
         director.perform(.tile(.rightHalf), on: window)
         let placed = try XCTUnwrap(window.cocoaFrame)
 
-        director.perform(.nextDisplay, on: window)
-        XCTAssertEqual(window.writes.last, Layout.mapped(placed, from: left.visibleFrame, to: primary.visibleFrame))
+        director.perform(.center, on: window)
+        XCTAssertEqual(window.writes.last, Layout.centered(placed, in: left.visibleFrame))
+    }
+
+    func testDisplayMovesMapAWindowFromTheDisplayUnderItsCentre() throws {
+        // The right half of the left display leaves this window mostly on primary. Mapped from the
+        // left display, which is narrower than the window, it would grow on the way: Previous
+        // Display would ask for 2668pt of the right-hand display, most of it off the desk.
+        for (command, destination) in [(WindowCommand.nextDisplay, right), (.previousDisplay, left)] {
+            let window = FakeWindow(frame: CGRect(x: -1400, y: 100, width: 1501, height: 600))
+            window.minimumWidth = 1501
+            let director = WindowDirector(displays: { [self.primary, self.right, self.left] })
+            director.perform(.tile(.rightHalf), on: window)
+            let placed = try XCTUnwrap(window.cocoaFrame)
+
+            director.perform(command, on: window)
+            XCTAssertEqual(window.writes.last, Layout.mapped(placed, from: primary.visibleFrame, to: destination.visibleFrame), "\(command)")
+        }
     }
 
     func testAWindowMovedSinceItWasPlacedGoesBackIntoTheHalfInsteadOfContinuing() {
