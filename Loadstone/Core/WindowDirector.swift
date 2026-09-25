@@ -80,13 +80,17 @@ final class WindowDirector {
             guard let display = display(for: current, key: key, in: displays) else { return .noDisplay }
             let target = tile.frame(in: display.visibleFrame)
             // Left or Right Half again on a window already in that half carries it on into the
-            // opposite half of the display beside it. With nothing beside it, it stays put.
-            if let continuation = tile.continuation,
-               isPlaced(current, in: target, key: key),
-               let beside = ScreenGeometry.adjacent(to: display, toward: continuation.toward, in: displays) {
-                return place(window, key: key, at: continuation.landing.frame(in: beside.visibleFrame), remembering: current)
+            // opposite half of the display beside it. With nothing beside it, the half is applied
+            // again, which leaves the window where it is, with no beep.
+            if let continuation = tile.continuation, isPlaced(current, in: target, key: key, for: command) {
+                if let beside = ScreenGeometry.adjacent(to: display, toward: continuation.toward, in: displays) {
+                    Log.ax.info("\(command.id, privacy: .public): carrying on to the display at \(String(describing: beside.frame), privacy: .public)")
+                    let landing = continuation.landing.frame(in: beside.visibleFrame)
+                    return place(window, key: key, at: landing, remembering: current, for: command)
+                }
+                Log.ax.info("\(command.id, privacy: .public): in the half, with no display to the \(String(describing: continuation.toward), privacy: .public) of \(String(describing: display.frame), privacy: .public)")
             }
-            return place(window, key: key, at: target, remembering: current)
+            return place(window, key: key, at: target, remembering: current, for: command)
         case .center:
             guard let display = display(for: current, key: key, in: displays) else { return .noDisplay }
             return relocate(window, key: key, to: Layout.centered(current, in: display.visibleFrame), remembering: current)
@@ -112,7 +116,7 @@ final class WindowDirector {
     @discardableResult
     func snap(_ tile: Tile, window: some MovableWindow, on display: Display) -> CommandOutcome {
         guard let current = window.cocoaFrame else { return .frameUnreadable }
-        return place(window, key: window.identity, at: tile.frame(in: display.visibleFrame), remembering: current)
+        return place(window, key: window.identity, at: tile.frame(in: display.visibleFrame), remembering: current, for: .tile(tile))
     }
 
     /// Drops everything remembered about the windows of a process that has quit.
@@ -150,12 +154,14 @@ final class WindowDirector {
     /// double-click, a drag), the window is carried on at the next press. Closing that would
     /// take watching the window, with an AXObserver dropping the entry when it moves anywhere
     /// but its landing.
-    private func place(_ window: some MovableWindow, key: WindowIdentity?, at target: CGRect, remembering previous: CGRect) -> CommandOutcome {
+    private func place(_ window: some MovableWindow, key: WindowIdentity?, at target: CGRect, remembering previous: CGRect, for command: WindowCommand) -> CommandOutcome {
         let outcome = apply(target, to: window, key: key, remembering: previous)
         guard outcome == .moved, let key else { return outcome }
-        if let landed = window.cocoaFrame, landed.sharesTopLeft(with: target) {
-            placements[key] = Placement(target: target, landed: landed)
+        let readBack = window.cocoaFrame
+        if let readBack, readBack.sharesTopLeft(with: target) {
+            placements[key] = Placement(target: target, landed: readBack)
         } else {
+            Log.ax.info("\(command.id, privacy: .public): read back \(readBack.map(String.init(describing:)) ?? "no frame", privacy: .public), off the top-left of \(String(describing: target), privacy: .public), so the placement is not recorded")
             placements.removeValue(forKey: key)
         }
         return outcome
@@ -166,10 +172,12 @@ final class WindowDirector {
     /// second covers apps that never fill a tile exactly, rounding to a character grid (Terminal,
     /// iTerm2) or holding a minimum or fixed width. A display change (a new resolution, the Dock
     /// moving) changes the tile's frame, so the window is refitted before it is carried on.
-    private func isPlaced(_ current: CGRect, in target: CGRect, key: WindowIdentity?) -> Bool {
+    private func isPlaced(_ current: CGRect, in target: CGRect, key: WindowIdentity?, for command: WindowCommand) -> Bool {
         if current.isWithinAPoint(of: target) { return true }
         guard let key, let last = placements[key] else { return false }
-        return last.target.isWithinAPoint(of: target) && current.isWithinAPoint(of: last.landed)
+        if last.target.isWithinAPoint(of: target) && current.isWithinAPoint(of: last.landed) { return true }
+        Log.ax.info("\(command.id, privacy: .public): last placement does not match: the window is at \(String(describing: current), privacy: .public), was sent to \(String(describing: last.target), privacy: .public) and landed at \(String(describing: last.landed), privacy: .public); the tile is now \(String(describing: target), privacy: .public)")
+        return false
     }
 
     /// Writes `frame`, then records `previous` as the frame Restore should return to — but only
