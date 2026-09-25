@@ -30,6 +30,9 @@ final class WindowDirectorTests: XCTestCase {
         /// the title, and Terminal's default title carries the window's size in character cells
         /// ("80×24"), so a write that resizes the window renames it.
         var titleFollowsSize = false
+        /// Set to act like a hung app, whose frame cannot be read either once it has refused a
+        /// write: the refusal leaves `cocoaFrame` nil until the test sets it again.
+        var unreadableOnceRefused = false
         private let assignedIdentity: WindowIdentity?
         private var pending: CGRect?
 
@@ -40,7 +43,10 @@ final class WindowDirectorTests: XCTestCase {
 
         @discardableResult
         func setCocoaFrame(_ frame: CGRect) -> AXError {
-            if let rejectWith { return rejectWith }
+            if let rejectWith {
+                if unreadableOnceRefused { cocoaFrame = nil }
+                return rejectWith
+            }
             writes.append(frame)
             if let refusesPositionWith, let old = cocoaFrame {
                 cocoaFrame = CGRect(x: old.minX, y: old.maxY - frame.height, width: frame.width, height: frame.height)
@@ -648,6 +654,24 @@ final class WindowDirectorTests: XCTestCase {
         window.refusesPositionWith = .cannotComplete
         XCTAssertEqual(director.perform(.tile(.topLeft), on: window), .rejected(.cannotComplete))
         window.refusesPositionWith = nil
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testARefusedWriteThatLeftTheFrameUnreadableForgetsWhereAHalfPutIt() throws {
+        // A hung app refuses Center and does not answer the read after it either, so nothing
+        // shows that the window is still where the half left it.
+        let window = FakeWindow(frame: floating)
+        window.grid = terminalCell
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+        let landed = try XCTUnwrap(window.cocoaFrame)
+        window.rejectWith = .cannotComplete
+        window.unreadableOnceRefused = true
+        XCTAssertEqual(director.perform(.center, on: window), .rejected(.cannotComplete))
+        window.rejectWith = nil
+        window.cocoaFrame = landed  // answering again, and still where it landed
 
         director.perform(.tile(.leftHalf), on: window)
         XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
