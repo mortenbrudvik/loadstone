@@ -772,8 +772,11 @@ final class WindowDirectorTests: XCTestCase {
 
     // MARK: What the log says
 
-    // A half press that does not carry a window on explains itself only where the press alone
-    // does not show why. Each test below clears the lines before the press it is about.
+    // A half press logs carrying a window on and stopping at the edge of the desk. A fit into
+    // the half explains itself when Loadstone last put the window in that half, when the press
+    // leaves it where it was, or when it had the half's top-left with no placement standing, and
+    // otherwise goes unlogged. Each test starts from empty lines, or clears them, before the
+    // press it is about.
 
     func testAFirstPressIsLoggedOnlyForAWindowThatHadTheHalfsTopLeft() {
         // From anywhere else the fit shows. From the half's top-left corner, with nothing to say

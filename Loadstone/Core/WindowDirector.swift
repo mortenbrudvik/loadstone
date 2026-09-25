@@ -97,7 +97,7 @@ final class WindowDirector {
             // Left or Right Half again on a window already in that half carries it on into the
             // opposite half of the display beside it. With nothing beside it, the half is applied
             // again, which leaves the window where it is, with no beep. A window not in the half
-            // is fitted into it, with a line in the log where the press alone does not say why.
+            // is fitted into it, with a line in the log in the cases `fit` lists.
             if let continuation = tile.continuation {
                 if isPlaced(current, in: target, key: key) {
                     if let beside = ScreenGeometry.adjacent(to: display, toward: continuation.toward, in: displays) {
@@ -207,16 +207,17 @@ final class WindowDirector {
     }
 
     /// Fits a window that is not in the half `tile` into it, at `target`, and logs why it was not
-    /// carried on where the press alone does not say. Either the window had a placement by this
-    /// same tile that no longer held, because the window had moved since or the display had
-    /// changed; or it reads back where it was: a Terminal window Loadstone has not put in the
-    /// half since it started, one whose record another command dropped, or a minimum-width
-    /// window that Left Third left where Left Half leaves it too, none of which the press moves,
-    /// or a window at the half's top-left whose app applies the frame late and still reports the
-    /// old one, which moves once the app catches up; or, with no placement standing, it had the
-    /// half's top-left corner without filling it, and the fit can be too small to see. A fit the
-    /// window visibly takes, from anywhere else or from where another tile put it, needs no
-    /// explaining, and a refused one is reported as a refusal.
+    /// carried on in three cases. Either the window had a placement by this same tile that no
+    /// longer held, because the window had moved since or the display had changed; or it reads
+    /// back where it was: a Terminal window Loadstone has not put in the half since it started,
+    /// one whose record another command dropped, or a minimum-width window that Left Third left
+    /// where Left Half leaves it too, none of which the press moves, or a window at the half's
+    /// top-left whose app applies the frame late and still reports the old one, which moves once
+    /// the app catches up; or, with no placement standing, it had the half's top-left corner
+    /// without filling it, and the fit can be too small to see. Otherwise the fit goes unlogged:
+    /// from where another tile put the window, or from anywhere else, it normally shows, though
+    /// from a few points off the half it can be too small to see as well. A refused fit is
+    /// reported as a refusal.
     private func fit(_ window: some MovableWindow, key: WindowIdentity?, into tile: Tile, at target: CGRect, from current: CGRect) -> CommandOutcome {
         let last = key.flatMap { placements[$0] }
         let hadStandingPlacement = standingPlacement(for: key, at: current) != nil
