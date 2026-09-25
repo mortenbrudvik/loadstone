@@ -117,14 +117,14 @@ final class ScreenGeometryTests: XCTestCase {
     }
 
     func testAdjacentIsTheDisplayOnThatSide() {
-        XCTExpectFailure("ScreenGeometry.adjacent is a stub until the next commit")
         XCTAssertEqual(ScreenGeometry.adjacent(to: primary, toward: .left, in: displays), left)
         XCTAssertEqual(ScreenGeometry.adjacent(to: primary, toward: .right, in: displays), right)
     }
 
     func testAdjacentIsTheNearestDisplayOnThatSide() {
-        XCTExpectFailure("ScreenGeometry.adjacent is a stub until the next commit")
-        XCTAssertEqual(ScreenGeometry.adjacent(to: right, toward: .left, in: displays), primary)
+        // Beyond the primary, and sharing more of the right display's height than the primary does.
+        let farLeft = display(x: -2560, y: -300, width: 2560, height: 1440)
+        XCTAssertEqual(ScreenGeometry.adjacent(to: right, toward: .left, in: [farLeft, primary, right]), primary)
     }
 
     func testAdjacentStopsAtTheEdgeOfTheDeskInsteadOfWrapping() {
@@ -149,7 +149,6 @@ final class ScreenGeometryTests: XCTestCase {
     }
 
     func testOfAStackedPairTheDisplaySharingMoreHeightIsAdjacent() {
-        XCTExpectFailure("ScreenGeometry.adjacent is a stub until the next commit")
         let upper = display(x: -1920, y: 700, width: 1920, height: 1080)   // shares 380pt of the primary's height
         let lower = display(x: -1920, y: -380, width: 1920, height: 1080)  // shares 700pt
         XCTAssertEqual(ScreenGeometry.adjacent(to: primary, toward: .left, in: [primary, upper, lower]), lower)
@@ -157,7 +156,6 @@ final class ScreenGeometryTests: XCTestCase {
     }
 
     func testAStackedPairSharingEqualHeightResolvesTheSameInAnyListOrder() {
-        XCTExpectFailure("ScreenGeometry.adjacent is a stub until the next commit")
         let upper = display(x: -1920, y: 540, width: 1920, height: 1080)
         let lower = display(x: -1920, y: -540, width: 1920, height: 1080)
         let one = ScreenGeometry.adjacent(to: primary, toward: .left, in: [primary, upper, lower])

@@ -195,14 +195,12 @@ final class WindowDirectorTests: XCTestCase {
     // MARK: Continuing across displays
 
     func testLeftHalfOnAWindowAlreadyThereContinuesToTheRightHalfOfTheDisplayToTheLeft() {
-        XCTExpectFailure("Left and Right Half do not continue across displays until the next commit")
         let window = FakeWindow(frame: Tile.leftHalf.frame(in: right.visibleFrame))
         XCTAssertEqual(makeDirector().perform(.tile(.leftHalf), on: window), .moved)
         XCTAssertEqual(window.cocoaFrame, Tile.rightHalf.frame(in: primary.visibleFrame))
     }
 
     func testRightHalfOnAWindowAlreadyThereContinuesToTheLeftHalfOfTheDisplayToTheRight() {
-        XCTExpectFailure("Left and Right Half do not continue across displays until the next commit")
         let window = FakeWindow(frame: Tile.rightHalf.frame(in: primary.visibleFrame))
         makeDirector().perform(.tile(.rightHalf), on: window)
         XCTAssertEqual(window.cocoaFrame, Tile.leftHalf.frame(in: right.visibleFrame))
@@ -221,7 +219,6 @@ final class WindowDirectorTests: XCTestCase {
     }
 
     func testRepeatedLeftHalfWalksAWindowAcrossTheDeskOneHalfAtATime() {
-        XCTExpectFailure("Left and Right Half do not continue across displays until the next commit")
         // The window never fills a half, so each step has to be recognised from where Loadstone
         // last put it, and each step has to record the half it actually landed in.
         let window = FakeWindow(frame: floating)
@@ -259,7 +256,6 @@ final class WindowDirectorTests: XCTestCase {
     }
 
     func testAHalfReachedByDraggingContinuesToo() {
-        XCTExpectFailure("Left and Right Half do not continue across displays until the next commit")
         let window = FakeWindow(frame: floating)
         window.grid = terminalCell
         let director = makeDirector()
@@ -270,7 +266,6 @@ final class WindowDirectorTests: XCTestCase {
     }
 
     func testAHalfCarriedOverByNextDisplayStillCountsAsThatHalf() {
-        XCTExpectFailure("Left and Right Half do not continue across displays until the next commit")
         let odd = Display(
             frame: CGRect(x: 1920, y: 0, width: 1201, height: 901),
             visibleFrame: CGRect(x: 1920, y: 0, width: 1201, height: 876)

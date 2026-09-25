@@ -183,6 +183,20 @@ extension Tile {
             return workArea
         }
     }
+
+    /// Where this tile sends a window that is already in it. Left Half on a window in the left
+    /// half moves it on to the right half of the display to its left, so pressing it again and
+    /// again walks the window across the desk one half at a time; Right Half mirrors that. Nil
+    /// for tiles that stay on their display.
+    var continuation: (toward: Side, landing: Tile)? {
+        switch self {
+        case .leftHalf: return (toward: .left, landing: .rightHalf)
+        case .rightHalf: return (toward: .right, landing: .leftHalf)
+        case .topHalf, .bottomHalf, .topLeft, .topRight, .bottomLeft, .bottomRight,
+             .leftThird, .centerThird, .rightThird, .leftTwoThirds, .rightTwoThirds, .maximize:
+            return nil
+        }
+    }
 }
 
 /// A side of a display, and so a direction across the desk.

@@ -25,7 +25,16 @@ final class WindowDirector {
     /// dropped when their process quits (`forgetWindows(ofProcess:)`) because macOS reuses
     /// window ids and a new window could otherwise inherit a stale memory.
     private var originals: [WindowIdentity: CGRect] = [:]
+    /// The tile Loadstone last laid each window into, with the frame the window reported once it
+    /// had taken it. That is how a second Left or Right Half knows the window is still in that
+    /// half when its app never fills the tile exactly. Dropped with `originals`.
+    private var placements: [WindowIdentity: Placement] = [:]
     private let displays: () -> [Display]
+
+    private struct Placement {
+        let tile: Tile
+        let frame: CGRect
+    }
 
     init(displays: @escaping () -> [Display] = { Display.all }) {
         self.displays = displays
@@ -61,7 +70,14 @@ final class WindowDirector {
         switch command {
         case .tile(let tile):
             guard let display = display(for: current, in: displays) else { return .noDisplay }
-            return apply(tile.frame(in: display.visibleFrame), to: window, remembering: current)
+            // Left or Right Half again on a window already in that half carries it on into the
+            // opposite half of the display beside it. With nothing beside it, it stays put.
+            if let continuation = tile.continuation,
+               isPlaced(window, in: tile, on: display, current: current),
+               let beside = ScreenGeometry.adjacent(to: display, toward: continuation.toward, in: displays) {
+                return place(window, in: continuation.landing, on: beside, remembering: current)
+            }
+            return place(window, in: tile, on: display, remembering: current)
         case .center:
             guard let display = display(for: current, in: displays) else { return .noDisplay }
             return apply(Layout.centered(current, in: display.visibleFrame), to: window, remembering: current)
@@ -87,12 +103,13 @@ final class WindowDirector {
     @discardableResult
     func snap(_ tile: Tile, window: some MovableWindow, on display: Display) -> CommandOutcome {
         guard let current = window.cocoaFrame else { return .frameUnreadable }
-        return apply(tile.frame(in: display.visibleFrame), to: window, remembering: current)
+        return place(window, in: tile, on: display, remembering: current)
     }
 
-    /// Drops restore memory for every window of a process that has quit.
+    /// Drops everything remembered about the windows of a process that has quit.
     func forgetWindows(ofProcess pid: pid_t) {
         originals = originals.filter { $0.key.pid != pid }
+        placements = placements.filter { $0.key.pid != pid }
     }
 
     private func move(_ window: some MovableWindow, current: CGRect, delta: Int, in displays: [Display]) -> CommandOutcome {
@@ -100,6 +117,25 @@ final class WindowDirector {
               let neighbor = ScreenGeometry.neighbor(of: display, delta: delta, in: displays) else { return .noDisplay }
         guard neighbor != display else { return .noOtherDisplay }
         return apply(Layout.mapped(current, from: display.visibleFrame, to: neighbor.visibleFrame), to: window, remembering: current)
+    }
+
+    /// Lays `tile` into `display`, then records where the window actually ended up, so that
+    /// pressing the same tile again can tell the window has not moved since.
+    private func place(_ window: some MovableWindow, in tile: Tile, on display: Display, remembering previous: CGRect) -> CommandOutcome {
+        let outcome = apply(tile.frame(in: display.visibleFrame), to: window, remembering: previous)
+        if outcome == .moved, let key = window.identity {
+            placements[key] = window.cocoaFrame.map { Placement(tile: tile, frame: $0) }
+        }
+        return outcome
+    }
+
+    /// Whether `window` is already in `tile`: it fills the tile, or it is where Loadstone last
+    /// put it with that tile. The second covers apps that never fill a tile exactly, rounding to
+    /// a character grid (Terminal, iTerm2) or holding a minimum or fixed width.
+    private func isPlaced(_ window: some MovableWindow, in tile: Tile, on display: Display, current: CGRect) -> Bool {
+        if current.isWithinAPoint(of: tile.frame(in: display.visibleFrame)) { return true }
+        guard let key = window.identity, let last = placements[key] else { return false }
+        return last.tile == tile && current.isWithinAPoint(of: last.frame)
     }
 
     /// Writes `frame`, then records `previous` as the frame Restore should return to — but only
@@ -145,5 +181,14 @@ final class WindowDirector {
             Log.ax.notice("\(command.id, privacy: .public): nothing remembered for a window of pid \(pid)")
             NSSound.beep()
         }
+    }
+}
+
+private extension CGRect {
+    /// Every edge within a point of `other`'s. Next Display maps a window proportionally, so a
+    /// half carried onto a width that does not divide by 2 lands a fraction of a point off.
+    func isWithinAPoint(of other: CGRect) -> Bool {
+        abs(minX - other.minX) <= 1 && abs(maxX - other.maxX) <= 1
+            && abs(minY - other.minY) <= 1 && abs(maxY - other.maxY) <= 1
     }
 }
