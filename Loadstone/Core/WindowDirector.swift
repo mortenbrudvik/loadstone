@@ -70,36 +70,40 @@ final class WindowDirector {
     @discardableResult
     func perform(_ command: WindowCommand, on window: some MovableWindow) -> CommandOutcome {
         guard let current = window.cocoaFrame else { return .frameUnreadable }
+        // Read once and passed down: on an AXWindow it is computed through AX calls, with a
+        // title read as well when the window id is unavailable.
+        let key = window.identity
         let displays = self.displays()
 
         switch command {
         case .tile(let tile):
-            guard let display = display(for: current, key: window.identity, in: displays) else { return .noDisplay }
+            guard let display = display(for: current, key: key, in: displays) else { return .noDisplay }
+            let target = tile.frame(in: display.visibleFrame)
             // Left or Right Half again on a window already in that half carries it on into the
             // opposite half of the display beside it. With nothing beside it, it stays put.
             if let continuation = tile.continuation,
-               isPlaced(window, in: tile, on: display, current: current),
+               isPlaced(current, in: target, key: key),
                let beside = ScreenGeometry.adjacent(to: display, toward: continuation.toward, in: displays) {
-                return place(window, in: continuation.landing, on: beside, remembering: current)
+                return place(window, key: key, at: continuation.landing.frame(in: beside.visibleFrame), remembering: current)
             }
-            return place(window, in: tile, on: display, remembering: current)
+            return place(window, key: key, at: target, remembering: current)
         case .center:
-            guard let display = display(for: current, key: window.identity, in: displays) else { return .noDisplay }
-            return relocate(window, to: Layout.centered(current, in: display.visibleFrame), remembering: current)
+            guard let display = display(for: current, key: key, in: displays) else { return .noDisplay }
+            return relocate(window, key: key, to: Layout.centered(current, in: display.visibleFrame), remembering: current)
         case .restore:
             // Restore must not record: it would store the current frame and then "restore" to it.
             // The memory is dropped only once the window has actually accepted the old frame, so
             // an app that refuses the write can still be restored on a later attempt.
-            guard let key = window.identity, let original = originals[key] else {
+            guard let key, let original = originals[key] else {
                 return .nothingToRestore
             }
-            let outcome = relocate(window, to: original, remembering: nil)
+            let outcome = relocate(window, key: key, to: original, remembering: nil)
             if outcome == .moved { originals.removeValue(forKey: key) }
             return outcome
         case .nextDisplay:
-            return move(window, current: current, delta: 1, in: displays)
+            return move(window, key: key, current: current, delta: 1, in: displays)
         case .previousDisplay:
-            return move(window, current: current, delta: -1, in: displays)
+            return move(window, key: key, current: current, delta: -1, in: displays)
         }
     }
 
@@ -108,7 +112,7 @@ final class WindowDirector {
     @discardableResult
     func snap(_ tile: Tile, window: some MovableWindow, on display: Display) -> CommandOutcome {
         guard let current = window.cocoaFrame else { return .frameUnreadable }
-        return place(window, in: tile, on: display, remembering: current)
+        return place(window, key: window.identity, at: tile.frame(in: display.visibleFrame), remembering: current)
     }
 
     /// Drops everything remembered about the windows of a process that has quit.
@@ -117,27 +121,28 @@ final class WindowDirector {
         placements = placements.filter { $0.key.pid != pid }
     }
 
-    private func move(_ window: some MovableWindow, current: CGRect, delta: Int, in displays: [Display]) -> CommandOutcome {
-        guard let display = display(for: current, key: window.identity, in: displays),
+    private func move(_ window: some MovableWindow, key: WindowIdentity?, current: CGRect, delta: Int, in displays: [Display]) -> CommandOutcome {
+        guard let display = display(for: current, key: key, in: displays),
               let neighbor = ScreenGeometry.neighbor(of: display, delta: delta, in: displays) else { return .noDisplay }
         guard neighbor != display else { return .noOtherDisplay }
-        return relocate(window, to: Layout.mapped(current, from: display.visibleFrame, to: neighbor.visibleFrame), remembering: current)
+        let mapped = Layout.mapped(current, from: display.visibleFrame, to: neighbor.visibleFrame)
+        return relocate(window, key: key, to: mapped, remembering: current)
     }
 
     /// Writes a frame that is not a tile (Center, Restore, a display move) and, once the window
     /// accepts it, drops the window's placement. The placement says where a tile put the window;
     /// once Loadstone has moved it anywhere else it can only mislead, most of all when it holds
     /// a stale read-back that the window can later be put back on.
-    private func relocate(_ window: some MovableWindow, to frame: CGRect, remembering previous: CGRect?) -> CommandOutcome {
-        let outcome = apply(frame, to: window, remembering: previous)
-        if outcome == .moved, let key = window.identity { placements.removeValue(forKey: key) }
+    private func relocate(_ window: some MovableWindow, key: WindowIdentity?, to frame: CGRect, remembering previous: CGRect?) -> CommandOutcome {
+        let outcome = apply(frame, to: window, key: key, remembering: previous)
+        if outcome == .moved, let key { placements.removeValue(forKey: key) }
         return outcome
     }
 
-    /// Lays `tile` into `display`, then records where the window actually ended up, so that
-    /// pressing the same tile again can tell the window has not moved since. Recorded only once
-    /// the window's top-left corner is where it was sent: an app that rounds or caps a size keeps
-    /// that corner, while one still reporting its old frame has not moved yet.
+    /// Sends the window to `target`, a tile's frame, then records where it actually ended up, so
+    /// that pressing the same tile again can tell the window has not moved since. Recorded only
+    /// once the window's top-left corner is where it was sent: an app that rounds or caps a size
+    /// keeps that corner, while one still reporting its old frame has not moved yet.
     ///
     /// An app that applies the frame late, and whose old frame already shared the target's
     /// top-left, reads back that old frame and has it recorded. Once Loadstone moves the window
@@ -145,25 +150,25 @@ final class WindowDirector {
     /// double-click, a drag), the window is carried on at the next press. Closing that would
     /// take watching the window, with an AXObserver dropping the entry when it moves anywhere
     /// but its landing.
-    private func place(_ window: some MovableWindow, in tile: Tile, on display: Display, remembering previous: CGRect) -> CommandOutcome {
-        let target = tile.frame(in: display.visibleFrame)
-        let outcome = apply(target, to: window, remembering: previous)
-        if outcome == .moved, let key = window.identity {
-            let landed = window.cocoaFrame.flatMap { $0.sharesTopLeft(with: target) ? $0 : nil }
-            placements[key] = landed.map { Placement(target: target, landed: $0) }
+    private func place(_ window: some MovableWindow, key: WindowIdentity?, at target: CGRect, remembering previous: CGRect) -> CommandOutcome {
+        let outcome = apply(target, to: window, key: key, remembering: previous)
+        guard outcome == .moved, let key else { return outcome }
+        if let landed = window.cocoaFrame, landed.sharesTopLeft(with: target) {
+            placements[key] = Placement(target: target, landed: landed)
+        } else {
+            placements.removeValue(forKey: key)
         }
         return outcome
     }
 
-    /// Whether `window` is already in `tile`: it fills the tile, or it is where it landed the last
-    /// time Loadstone sent it to this same frame. The second covers apps that never fill a tile
-    /// exactly, rounding to a character grid (Terminal, iTerm2) or holding a minimum or fixed
-    /// width. A display change (a new resolution, the Dock moving) changes the tile's frame, so
-    /// the window is refitted before it is carried on.
-    private func isPlaced(_ window: some MovableWindow, in tile: Tile, on display: Display, current: CGRect) -> Bool {
-        let target = tile.frame(in: display.visibleFrame)
+    /// Whether a window at `current` is already in the tile whose frame is `target`: it fills the
+    /// tile, or it is where it landed the last time Loadstone sent it to this same frame. The
+    /// second covers apps that never fill a tile exactly, rounding to a character grid (Terminal,
+    /// iTerm2) or holding a minimum or fixed width. A display change (a new resolution, the Dock
+    /// moving) changes the tile's frame, so the window is refitted before it is carried on.
+    private func isPlaced(_ current: CGRect, in target: CGRect, key: WindowIdentity?) -> Bool {
         if current.isWithinAPoint(of: target) { return true }
-        guard let key = window.identity, let last = placements[key] else { return false }
+        guard let key, let last = placements[key] else { return false }
         return last.target.isWithinAPoint(of: target) && current.isWithinAPoint(of: last.landed)
     }
 
@@ -171,16 +176,16 @@ final class WindowDirector {
     /// once the window has accepted the write. Recording afterwards rather than before is what
     /// keeps a refused frame, or a command that never ran at all, from leaving behind a restore
     /// entry that a later Restore would act on.
-    private func apply(_ frame: CGRect, to window: some MovableWindow, remembering previous: CGRect?) -> CommandOutcome {
+    private func apply(_ frame: CGRect, to window: some MovableWindow, key: WindowIdentity?, remembering previous: CGRect?) -> CommandOutcome {
         let error = window.setCocoaFrame(frame)
         guard error == .success else { return .rejected(error) }
-        if let previous { rememberIfNeeded(window, current: previous) }
+        if let previous { rememberIfNeeded(previous, for: key) }
         return .moved
     }
 
-    private func rememberIfNeeded(_ window: some MovableWindow, current: CGRect) {
-        guard let key = window.identity, originals[key] == nil else { return }
-        originals[key] = current
+    private func rememberIfNeeded(_ frame: CGRect, for key: WindowIdentity?) {
+        guard let key, originals[key] == nil else { return }
+        originals[key] = frame
     }
 
     /// The display a window at `frame` is on. While it is still where Loadstone last put it, that
