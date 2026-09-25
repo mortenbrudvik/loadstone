@@ -7,7 +7,9 @@ enum WindowIdentity: Hashable, Sendable {
     /// the director drops entries when their process quits.
     case cgWindow(CGWindowID, pid: pid_t)
     /// Weaker fallback when the window id is unavailable: titles change (browser tabs, "edited"
-    /// markers), which orphans the memory.
+    /// markers), which orphans the memory. A title that follows the window's size, as
+    /// Terminal's does, changes with every resize, so the director reads the identity again
+    /// after each write the window accepts and records under the new title.
     case fallback(pid: pid_t, title: String)
 
     var pid: pid_t {

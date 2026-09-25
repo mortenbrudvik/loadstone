@@ -30,8 +30,9 @@ final class WindowDirector {
     /// or caps the size. That is how a second Left or Right Half knows the window is still in
     /// that half when it never fills the tile exactly, and which display a tile or Center works
     /// on while the window is still where it landed. Every frame the window accepts from
-    /// Loadstone drops the entry, and a tile then records a new one; the window's process
-    /// quitting drops it too, along with `originals`.
+    /// Loadstone drops the entry, and a tile then records a new one; a refused frame that moved
+    /// the window anyway drops it, and so does the window's process quitting, along with
+    /// `originals`.
     private var placements: [WindowIdentity: Placement] = [:]
     private let displays: () -> [Display]
 
