@@ -331,6 +331,43 @@ final class WindowDirectorTests: XCTestCase {
         XCTAssertEqual(window.cocoaFrame, Tile.rightHalf.frame(in: primary.visibleFrame))
     }
 
+    func testAHalfCarriedFromAnOddWidthOntoAnEvenOneMoreThanTwiceAsWideIsRefittedFirst() throws {
+        let (window, director, _, wide) = leftHalfCarriedByNextDisplay(onto: 2560)
+        let carried = try XCTUnwrap(window.cocoaFrame)
+        XCTAssertEqual(Tile.leftHalf.frame(in: wide.visibleFrame).width - carried.width, 2560 / 2402, accuracy: 1e-9,
+                       "W2 / (2 * W1) short of the half, over a point")
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: wide.visibleFrame))
+    }
+
+    func testAHalfCarriedFromAnOddWidthOntoAnOddOneMoreThanTwiceAsWideStillCountsAsThatHalf() throws {
+        let (window, director, narrow, wide) = leftHalfCarriedByNextDisplay(onto: 2561)
+        let carried = try XCTUnwrap(window.cocoaFrame)
+        XCTAssertEqual(Tile.leftHalf.frame(in: wide.visibleFrame).width - carried.width, 2561 / 2402 - 0.5, accuracy: 1e-9,
+                       "the half's own flooring takes half a point off the miss, leaving it under a point")
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.rightHalf.frame(in: narrow.visibleFrame))
+    }
+
+    /// A window in the left half of a display 1201 wide, moved by Next Display onto a display
+    /// `width` wide to its right.
+    private func leftHalfCarriedByNextDisplay(onto width: CGFloat) -> (window: FakeWindow, director: WindowDirector, narrow: Display, wide: Display) {
+        let narrow = Display(
+            frame: CGRect(x: 0, y: 0, width: 1201, height: 901),
+            visibleFrame: CGRect(x: 0, y: 0, width: 1201, height: 877)
+        )
+        let wide = Display(
+            frame: CGRect(x: 1201, y: 0, width: width, height: 1441),
+            visibleFrame: CGRect(x: 1201, y: 0, width: width, height: 1415)
+        )
+        let window = FakeWindow(frame: Tile.leftHalf.frame(in: narrow.visibleFrame))
+        let director = WindowDirector(displays: { [narrow, wide] })
+        director.perform(.nextDisplay, on: window)
+        return (window, director, narrow, wide)
+    }
+
     func testARefusedHalfIsNotRememberedAsPlaced() {
         // The refused window stays where it was, which shares the half's top-left, so only the
         // refusal itself keeps that frame from being recorded as where the half left it.

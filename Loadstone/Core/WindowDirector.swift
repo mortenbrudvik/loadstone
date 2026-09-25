@@ -238,10 +238,11 @@ final class WindowDirector {
 
 private extension CGRect {
     /// Every edge within a point of `other`'s. Next Display maps a window proportionally, so a
-    /// half carried to another display can miss that display's half where a width is odd: by
-    /// half a point onto an odd width, and by W2 / (2 * W1) from an odd width W1 onto W2. That
-    /// is over a point once the new display is more than twice as wide (1201 onto 2560 is
-    /// 1.07pt), and the next press then refits the window instead of carrying it on.
+    /// half it carries to another display misses that display's half where a width is odd: by
+    /// half a point from an even width onto an odd one, and from an odd width W1 by
+    /// W2 / (2 * W1) onto an even W2 (over a point once W2 > 2 * W1) and by
+    /// |W2 / (2 * W1) - 1/2| onto an odd W2 (over a point once W2 > 3 * W1). Over a point, the
+    /// next press refits the window instead of carrying it on.
     func isWithinAPoint(of other: CGRect) -> Bool {
         abs(minX - other.minX) <= 1 && abs(maxX - other.maxX) <= 1
             && abs(minY - other.minY) <= 1 && abs(maxY - other.maxY) <= 1
