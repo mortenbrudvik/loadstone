@@ -63,7 +63,7 @@ enum ScreenGeometry {
     /// display only above or below never counts; reading order puts a monitor just before the
     /// laptop under it, which would send a leftward move up. Nil when nothing is beside it, so a
     /// move toward the edge of the desk stops there instead of wrapping.
-    static func adjacent(to display: Display, toward side: Side, in displays: [Display] = Display.all) -> Display? {
+    static func adjacent(to display: Display, toward side: Display.Side, in displays: [Display] = Display.all) -> Display? {
         let here = display.frame
         // How far out from this display's edge on `side` the other one starts. Negative when
         // the two overlap horizontally, and for any display on the other side.

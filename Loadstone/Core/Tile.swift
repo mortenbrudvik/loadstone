@@ -188,7 +188,7 @@ extension Tile {
     /// half moves it on to the right half of the display to its left, so pressing it again and
     /// again walks the window across the desk one half at a time; Right Half mirrors that. Nil
     /// for tiles that stay on their display.
-    var continuation: (toward: Side, landing: Tile)? {
+    var continuation: (toward: Display.Side, landing: Tile)? {
         switch self {
         case .leftHalf: return (toward: .left, landing: .rightHalf)
         case .rightHalf: return (toward: .right, landing: .leftHalf)
@@ -197,11 +197,6 @@ extension Tile {
             return nil
         }
     }
-}
-
-/// A side of a display, and so a direction across the desk.
-enum Side: Sendable {
-    case left, right
 }
 
 enum SnapZones {
@@ -263,7 +258,7 @@ enum SnapZones {
         return .rightThird
     }
 
-    private static func thirdAlongHeight(_ y: CGFloat, frame: CGRect, side: Side) -> Tile {
+    private static func thirdAlongHeight(_ y: CGFloat, frame: CGRect, side: Display.Side) -> Tile {
         let t = (y - frame.minY) / max(frame.height, 1)
         switch side {
         case .left:

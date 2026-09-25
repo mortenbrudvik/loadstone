@@ -21,4 +21,9 @@ struct Display: Equatable, Sendable {
     static var all: [Display] {
         NSScreen.screens.map(Display.init)
     }
+
+    /// A side of a display, and so a direction across the desk.
+    enum Side: Sendable {
+        case left, right
+    }
 }
