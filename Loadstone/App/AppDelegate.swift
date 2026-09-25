@@ -24,7 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         dragMonitor = EdgeDragMonitor()
         dragMonitor?.start()
 
-        // The director's memory of each window (Restore's frame, where a half put it) is keyed by
+        // The director's memory of each window (Restore's frame, where a tile put it) is keyed by
         // window id, which macOS reuses; drop a process's entries when it quits so a new window
         // cannot inherit them.
         terminationObserver = NSWorkspace.shared.notificationCenter.addObserver(

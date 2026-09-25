@@ -59,7 +59,7 @@ U  I
 J  K
 ```
 
-Press `⌃⌥←` again on a window that is already in the left half and it moves on to the right half of the screen to its left, so repeated presses walk it across your screens one half at a time. `⌃⌥→` does the same to the right. At the outer edge of the desk the window stays put, and a screen above or below does not count.
+Press the Left Half shortcut (`⌃⌥←` by default) again on a window that is already in the left half and it moves on to the right half of the screen to its left, so repeated presses walk it across your screens one half at a time. Right Half (`⌃⌥→`) does the same to the right, and the menu items behave the same way. At the outer edge of the desk the window stays where it is, with no beep, and a screen above or below does not count.
 
 ## Drag to snap
 
@@ -152,7 +152,7 @@ Menu bar → Loadstone → **Loadstone Help** opens this page.
 
 **Next / previous display beeps.** Only one display is attached.
 
-**Pressing `⌃⌥←` again does not move the window to the screen beside it.** Only a screen to the side counts, as arranged in System Settings → Displays; one above or below does not. And the window has to be in that half already: if you have moved it since, or the screen's resolution has changed, the first press puts it back into the half.
+**Pressing `⌃⌥←` again does not move the window to the screen beside it.** Only a screen to the side counts, as arranged in System Settings → Displays; one above or below does not, and neither does one touching only at a corner. And the window has to be in that half already: if you have moved it since, or the resolution, the Dock, or the screen layout has changed, the first press puts it back into the half and the next one carries it on. Windows that size in steps, such as Terminal, never fill the half exactly, so they count as in the half only if Loadstone put them there since it last started. The log (below) says why a press did not carry the window on; those are info messages, so keep `--info`.
 
 **macOS’s own edge tiling is off after Loadstone crashed or was force-quit.** Loadstone turns it off while running and back on when it quits normally; after an unclean exit, simply launching Loadstone again restores it. To put it back by hand, use System Settings → **Desktop & Dock** → **Windows**.
 

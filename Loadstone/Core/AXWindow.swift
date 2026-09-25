@@ -74,7 +74,7 @@ struct AXWindow: MovableWindow {
 
     private static let getWindow: GetWindowFunction? = {
         guard let symbol = dlsym(dlopen(nil, RTLD_NOW), "_AXUIElementGetWindow") else {
-            Log.ax.error("_AXUIElementGetWindow is unavailable; Restore will identify windows by title")
+            Log.ax.error("_AXUIElementGetWindow is unavailable; Restore and repeated halves will identify windows by title")
             return nil
         }
         return unsafeBitCast(symbol, to: GetWindowFunction.self)
