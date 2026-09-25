@@ -70,8 +70,9 @@ final class WindowDirector {
     @discardableResult
     func perform(_ command: WindowCommand, on window: some MovableWindow) -> CommandOutcome {
         guard let current = window.cocoaFrame else { return .frameUnreadable }
-        // Read once and passed down: on an AXWindow it is computed through AX calls, with a
-        // title read as well when the window id is unavailable.
+        // Read once for every lookup and passed down: on an AXWindow it is computed through AX
+        // calls, with a title read as well when the window id is unavailable. `apply` reads a
+        // title-based one again after a write, to record under.
         let key = window.identity
         let displays = self.displays()
 
@@ -93,7 +94,7 @@ final class WindowDirector {
             return place(window, key: key, at: target, from: current, for: command)
         case .center:
             guard let display = display(for: current, key: key, in: displays) else { return .noDisplay }
-            return apply(Layout.centered(current, in: display.visibleFrame), to: window, key: key, from: current, remembering: current)
+            return apply(Layout.centered(current, in: display.visibleFrame), to: window, key: key, from: current, remembering: current).outcome
         case .restore:
             // Restore must not record: it would store the current frame and then "restore" to it.
             // The memory is dropped only once the window has actually accepted the old frame, so
@@ -101,7 +102,7 @@ final class WindowDirector {
             guard let key, let original = originals[key] else {
                 return .nothingToRestore
             }
-            let outcome = apply(original, to: window, key: key, from: current, remembering: nil)
+            let outcome = apply(original, to: window, key: key, from: current, remembering: nil).outcome
             if outcome == .moved { originals.removeValue(forKey: key) }
             return outcome
         case .nextDisplay:
@@ -130,7 +131,7 @@ final class WindowDirector {
               let neighbor = ScreenGeometry.neighbor(of: display, delta: delta, in: displays) else { return .noDisplay }
         guard neighbor != display else { return .noOtherDisplay }
         let mapped = Layout.mapped(current, from: display.visibleFrame, to: neighbor.visibleFrame)
-        return apply(mapped, to: window, key: key, from: current, remembering: current)
+        return apply(mapped, to: window, key: key, from: current, remembering: current).outcome
     }
 
     /// Sends the window to `target`, a tile's frame, then records where it actually ended up, so
@@ -146,15 +147,15 @@ final class WindowDirector {
     /// take watching the window, with an AXObserver dropping the entry when it moves anywhere
     /// but its landing.
     private func place(_ window: some MovableWindow, key: WindowIdentity?, at target: CGRect, from current: CGRect, for command: WindowCommand) -> CommandOutcome {
-        let outcome = apply(target, to: window, key: key, from: current, remembering: current)
-        guard outcome == .moved, let key else { return outcome }
+        let applied = apply(target, to: window, key: key, from: current, remembering: current)
+        guard applied.outcome == .moved, let key = applied.key else { return applied.outcome }
         let readBack = window.cocoaFrame
         if let readBack, readBack.sharesTopLeft(with: target) {
             placements[key] = Placement(target: target, landed: readBack)
         } else {
             Log.ax.info("\(command.id, privacy: .public): read back \(readBack.map(String.init(describing:)) ?? "no frame", privacy: .public), off the top-left of \(String(describing: target), privacy: .public), so the placement is not recorded")
         }
-        return outcome
+        return applied.outcome
     }
 
     /// Whether a window at `current` is already in the tile whose frame is `target`: it fills the
@@ -190,17 +191,32 @@ final class WindowDirector {
     /// window resized at its old top-left, which can be exactly a stale frame recorded as where
     /// it landed. So a refusal reads the frame again and drops the placement unless the window is
     /// still within a point of `current`.
-    private func apply(_ frame: CGRect, to window: some MovableWindow, key: WindowIdentity?, from current: CGRect, remembering previous: CGRect?) -> CommandOutcome {
+    ///
+    /// Returns the outcome and the key the window goes by after the write, which the Restore
+    /// frame here and a tile's placement in `place` are recorded under. That is `key`, except
+    /// that a title-based one is read again once the write is accepted (`keyAfterWrite`); the
+    /// placement dropped is still the one under `key`, which the window was looked up by.
+    private func apply(_ frame: CGRect, to window: some MovableWindow, key: WindowIdentity?, from current: CGRect, remembering previous: CGRect?) -> (outcome: CommandOutcome, key: WindowIdentity?) {
         let error = window.setCocoaFrame(frame)
         guard error == .success else {
             if let key, placements[key] != nil, window.cocoaFrame?.isWithinAPoint(of: current) != true {
                 placements.removeValue(forKey: key)
             }
-            return .rejected(error)
+            return (.rejected(error), key)
         }
         if let key { placements.removeValue(forKey: key) }
-        if let previous { rememberIfNeeded(previous, for: key) }
-        return .moved
+        let settled = keyAfterWrite(key, of: window)
+        if let previous { rememberIfNeeded(previous, for: settled) }
+        return (.moved, settled)
+    }
+
+    /// The key the next command will look `window` up by, once a write under `key` has been
+    /// accepted. A window id cannot change with a write, but a title can: Terminal's default
+    /// title carries the window's size in character cells, so what is recorded under the title
+    /// from before a resize would never be found again.
+    private func keyAfterWrite(_ key: WindowIdentity?, of window: some MovableWindow) -> WindowIdentity? {
+        guard case .fallback = key else { return key }
+        return window.identity
     }
 
     private func rememberIfNeeded(_ frame: CGRect, for key: WindowIdentity?) {

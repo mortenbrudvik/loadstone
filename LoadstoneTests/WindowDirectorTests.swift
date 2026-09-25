@@ -5,7 +5,11 @@ import ApplicationServices
 @MainActor
 final class WindowDirectorTests: XCTestCase {
     private final class FakeWindow: MovableWindow {
-        var identity: WindowIdentity?
+        var identity: WindowIdentity? {
+            guard titleFollowsSize, let cocoaFrame else { return assignedIdentity }
+            let cell = grid ?? CGSize(width: 1, height: 1)
+            return .fallback(pid: 42, title: "\(Int(cocoaFrame.width / cell.width))×\(Int(cocoaFrame.height / cell.height))")
+        }
         var cocoaFrame: CGRect?
         var writes: [CGRect] = []
         var rejectWith: AXError?
@@ -22,11 +26,16 @@ final class WindowDirectorTests: XCTestCase {
         /// position, or times out on it: the window has the new size at its old top-left corner,
         /// and the write fails with this error.
         var refusesPositionWith: AXError?
+        /// Set to act like Terminal when the window id is unavailable: the identity falls back to
+        /// the title, and Terminal's default title carries the window's size in character cells
+        /// ("80×24"), so a write that resizes the window renames it.
+        var titleFollowsSize = false
+        private let assignedIdentity: WindowIdentity?
         private var pending: CGRect?
 
         init(frame: CGRect, identity: WindowIdentity? = .cgWindow(1, pid: 42)) {
             cocoaFrame = frame
-            self.identity = identity
+            assignedIdentity = identity
         }
 
         @discardableResult
@@ -202,6 +211,16 @@ final class WindowDirectorTests: XCTestCase {
         XCTAssertEqual(director.perform(.restore, on: window), .nothingToRestore)
     }
 
+    func testAWindowWhoseTitleFollowsItsSizeCanStillBeRestored() {
+        let window = FakeWindow(frame: floating)
+        window.titleFollowsSize = true
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+
+        XCTAssertEqual(director.perform(.restore, on: window), .moved)
+        XCTAssertEqual(window.cocoaFrame, floating)
+    }
+
     func testARejectedCommandIsNotRememberedForRestore() {
         let window = FakeWindow(frame: original)
         let director = makeDirector()
@@ -333,6 +352,31 @@ final class WindowDirectorTests: XCTestCase {
 
         director.perform(.tile(.leftHalf), on: window)
         XCTAssertEqual(window.writes.last, Tile.rightHalf.frame(in: primary.visibleFrame))
+    }
+
+    func testAWindowWhoseTitleFollowsItsSizeCarriesOnAtTheSecondPress() {
+        let window = FakeWindow(frame: floating)
+        window.grid = terminalCell
+        window.titleFollowsSize = true
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.rightHalf.frame(in: primary.visibleFrame))
+    }
+
+    func testMovingToAnotherDisplayForgetsWhereAHalfPutAWindowWhoseTitleFollowsItsSize() throws {
+        let window = FakeWindow(frame: floating)
+        window.grid = terminalCell
+        window.titleFollowsSize = true
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+        let landed = try XCTUnwrap(window.cocoaFrame)
+        director.perform(.nextDisplay, on: window)
+        window.cocoaFrame = landed  // dragged back by hand, which gives it back that title
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
     }
 
     func testAHalfCarriedOverByNextDisplayStillCountsAsThatHalf() {
