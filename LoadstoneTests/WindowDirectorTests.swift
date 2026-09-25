@@ -100,6 +100,15 @@ final class WindowDirectorTests: XCTestCase {
         WindowDirector(displays: { [self.primary, self.right] })
     }
 
+    /// The lines a director diagnoses, which the app sends to the log at info level.
+    private final class Diagnostics {
+        var lines: [String] = []
+    }
+
+    private func makeDirector(diagnosingInto diagnostics: Diagnostics) -> WindowDirector {
+        WindowDirector(displays: { [self.primary, self.right] }, diagnose: { diagnostics.lines.append($0) })
+    }
+
     func testTilePlacesTheWindowOnTheDisplayUnderItsCentre() {
         let window = FakeWindow(frame: original)
         let outcome = makeDirector().perform(.tile(.leftHalf), on: window)
@@ -730,5 +739,120 @@ final class WindowDirectorTests: XCTestCase {
 
         director.perform(.tile(.leftHalf), on: window)
         XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    // MARK: What the log says
+
+    // A half press that does not carry a window on explains itself only where the press alone
+    // does not show why. Each test below clears the lines before the press it is about.
+
+    func testAFirstPressIsLoggedOnlyForAWindowThatHadTheHalfsTopLeft() {
+        // From anywhere else the fit shows. From the half's top-left corner, with nothing to say
+        // how the window got there, it can be too small to see.
+        let diagnostics = Diagnostics()
+        makeDirector(diagnosingInto: diagnostics).perform(.tile(.leftHalf), on: FakeWindow(frame: floating))
+        XCTAssertEqual(diagnostics.lines, [])
+
+        makeDirector(diagnosingInto: diagnostics).perform(.tile(.leftHalf), on: FakeWindow(frame: flushTopLeft))
+        XCTAssertEqual(diagnostics.lines.count, 1, "\(diagnostics.lines)")
+        XCTAssertTrue(diagnostics.lines.allSatisfy { $0.contains("had the top-left") }, "\(diagnostics.lines)")
+    }
+
+    func testAHalfAfterMaximizeIsNotLogged() {
+        // Maximize leaves the window with the half's top-left, but Loadstone put it there, and
+        // the fit into the half shows.
+        let window = FakeWindow(frame: floating)
+        let diagnostics = Diagnostics()
+        let director = makeDirector(diagnosingInto: diagnostics)
+        director.perform(.tile(.maximize), on: window)
+        diagnostics.lines.removeAll()
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(diagnostics.lines, [])
+    }
+
+    func testAPlacementByAnotherTileIsNotLoggedAsNoLongerHolding() {
+        // Put in Top Left and dragged out by hand.
+        let window = FakeWindow(frame: floating)
+        let diagnostics = Diagnostics()
+        let director = makeDirector(diagnosingInto: diagnostics)
+        director.perform(.tile(.topLeft), on: window)
+        window.cocoaFrame = floating
+        diagnostics.lines.removeAll()
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(diagnostics.lines, [])
+
+        // Carried on by Left Half, the window was placed by Right Half, the half it moved into.
+        let carried = FakeWindow(frame: Tile.leftHalf.frame(in: right.visibleFrame), identity: .cgWindow(2, pid: 42))
+        director.perform(.tile(.leftHalf), on: carried)
+        carried.cocoaFrame = carried.cocoaFrame?.offsetBy(dx: -41, dy: -43)  // nudged by hand
+        diagnostics.lines.removeAll()
+
+        director.perform(.tile(.leftHalf), on: carried)
+        XCTAssertEqual(diagnostics.lines, [])
+    }
+
+    func testAPlacementByTheSameHalfThatNoLongerHoldsIsLogged() {
+        // Put in Left Half and dragged out by hand.
+        let window = FakeWindow(frame: floating)
+        window.grid = terminalCell
+        let diagnostics = Diagnostics()
+        let director = makeDirector(diagnosingInto: diagnostics)
+        director.perform(.tile(.leftHalf), on: window)
+        window.cocoaFrame = floating
+        diagnostics.lines.removeAll()
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(diagnostics.lines.count, 1, "\(diagnostics.lines)")
+        XCTAssertTrue(diagnostics.lines.allSatisfy { $0.contains("no longer held") }, "\(diagnostics.lines)")
+
+        // Carried on by Left Half into primary's right half, nudged by hand, then Right Half.
+        let carried = FakeWindow(frame: Tile.leftHalf.frame(in: right.visibleFrame), identity: .cgWindow(2, pid: 42))
+        director.perform(.tile(.leftHalf), on: carried)
+        carried.cocoaFrame = carried.cocoaFrame?.offsetBy(dx: -41, dy: -43)
+        diagnostics.lines.removeAll()
+
+        director.perform(.tile(.rightHalf), on: carried)
+        XCTAssertEqual(diagnostics.lines.count, 1, "\(diagnostics.lines)")
+        XCTAssertTrue(diagnostics.lines.allSatisfy { $0.contains("no longer held") }, "\(diagnostics.lines)")
+    }
+
+    func testAWindowThatReadsBackWhereItWasIsLogged() throws {
+        // A Terminal window already in the half, with nothing recorded since Loadstone started.
+        let terminal = FakeWindow(frame: floating)
+        terminal.grid = terminalCell
+        makeDirector().perform(.tile(.leftHalf), on: terminal)
+        // A window that will not go below 1501pt, which Left Third leaves where Left Half would.
+        let wide = FakeWindow(frame: floating, identity: .cgWindow(2, pid: 42))
+        wide.minimumWidth = 1501
+        let diagnostics = Diagnostics()
+        let director = makeDirector(diagnosingInto: diagnostics)
+        director.perform(.tile(.leftThird), on: wide)
+
+        for window in [terminal, wide] {
+            let before = try XCTUnwrap(window.cocoaFrame)
+            diagnostics.lines.removeAll()
+
+            director.perform(.tile(.leftHalf), on: window)
+            XCTAssertEqual(window.cocoaFrame, before, "the press changed nothing that shows")
+            XCTAssertEqual(diagnostics.lines.count, 1, "\(diagnostics.lines)")
+            XCTAssertTrue(diagnostics.lines.allSatisfy { $0.contains("read back where it was") }, "\(diagnostics.lines)")
+        }
+    }
+
+    func testAHalfAtTheEdgeOfTheDeskIsLogged() {
+        let window = FakeWindow(frame: Tile.leftHalf.frame(in: primary.visibleFrame))
+        let diagnostics = Diagnostics()
+        makeDirector(diagnosingInto: diagnostics).perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(diagnostics.lines.count, 1, "\(diagnostics.lines)")
+        XCTAssertTrue(diagnostics.lines.allSatisfy { $0.contains("no display to the left") }, "\(diagnostics.lines)")
+    }
+
+    func testCarryingAWindowOnIsLogged() {
+        let window = FakeWindow(frame: Tile.leftHalf.frame(in: right.visibleFrame))
+        let diagnostics = Diagnostics()
+        makeDirector(diagnosingInto: diagnostics).perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(diagnostics.lines, ["leftHalf: carrying on to the display at \(primary.frame)"])
     }
 }
