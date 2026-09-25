@@ -298,6 +298,16 @@ final class WindowDirectorTests: XCTestCase {
         XCTAssertEqual(window.cocoaFrame, Tile.leftHalf.frame(in: right.visibleFrame))
     }
 
+    func testAWindowMovedToAnotherDisplaySinceItWasPlacedIsTiledOnTheDisplayItIsNowOn() {
+        let window = FakeWindow(frame: floating)
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+        window.cocoaFrame = original  // dragged onto primary by hand
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: primary.visibleFrame))
+    }
+
     func testRestoreUndoesAContinuation() {
         let window = FakeWindow(frame: Tile.leftHalf.frame(in: right.visibleFrame))
         let director = makeDirector()
@@ -386,17 +396,31 @@ final class WindowDirectorTests: XCTestCase {
         window.grid = terminalCell
         let director = makeDirector()
         director.snap(.leftHalf, window: window, on: right)
-        let placed = window.cocoaFrame
 
         window.rejectWith = .cannotComplete
         XCTAssertEqual(director.perform(.tile(.leftHalf), on: window), .rejected(.cannotComplete))
-        XCTAssertEqual(window.cocoaFrame, placed)
         window.rejectWith = nil
 
         director.perform(.tile(.leftHalf), on: window)
         XCTAssertEqual(window.writes.last, Tile.rightHalf.frame(in: primary.visibleFrame))
         XCTAssertEqual(director.perform(.restore, on: window), .moved)
         XCTAssertEqual(window.writes.last, floating)
+    }
+
+    func testARefusedCommandThatLeftTheWindowWhereItWasKeepsThePlacement() {
+        for command in [WindowCommand.center, .restore, .nextDisplay] {
+            let window = FakeWindow(frame: floating)
+            window.grid = terminalCell
+            let director = makeDirector()
+            director.perform(.tile(.leftHalf), on: window)
+
+            window.rejectWith = .cannotComplete
+            XCTAssertEqual(director.perform(command, on: window), .rejected(.cannotComplete), "\(command)")
+            window.rejectWith = nil
+
+            director.perform(.tile(.leftHalf), on: window)
+            XCTAssertEqual(window.writes.last, Tile.rightHalf.frame(in: primary.visibleFrame), "\(command)")
+        }
     }
 
     func testAWindowStillReportingItsOldFrameIsNotRememberedAsPlaced() {
@@ -489,6 +513,21 @@ final class WindowDirectorTests: XCTestCase {
         XCTAssertEqual(back.maxX, flushTopLeft.maxX, accuracy: 1)
         XCTAssertEqual(back.minY, flushTopLeft.minY, accuracy: 1)
         XCTAssertEqual(back.maxY, flushTopLeft.maxY, accuracy: 1)
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testATileWhoseReadBackMissesForgetsWhereAHalfPutTheWindow() {
+        let window = FakeWindow(frame: flushTopLeft)
+        window.appliesLate = true
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+        window.catchUp()
+        // Read straight back, the window is still in the left half, off the right half's top-left.
+        director.perform(.tile(.rightHalf), on: window)
+        window.catchUp()
+        window.cocoaFrame = flushTopLeft  // dragged back by hand
 
         director.perform(.tile(.leftHalf), on: window)
         XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
