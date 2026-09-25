@@ -423,6 +423,32 @@ final class WindowDirectorTests: XCTestCase {
         ])
     }
 
+    func testRepeatedLeftHalfKeepsAWindowPulledBelowAMenuBarAtTheEdgeOfTheDesk() {
+        // A monitor 601 wide, with no menu bar, its top level with the laptop's. In either of
+        // its halves this window, which will not go below 1501, has most of itself on the laptop,
+        // so macOS pulls it down 32pt, and its centre is on the laptop too. At the edge of the
+        // desk, Left Half sends it to the frame it is already in, and it reads back where it was.
+        let narrow = Display(
+            frame: CGRect(x: -601, y: 48, width: 601, height: 853),
+            visibleFrame: CGRect(x: -601, y: 48, width: 601, height: 853)
+        )
+        let window = FakeWindow(frame: CGRect(x: 100, y: 100, width: 1501, height: 600))
+        window.minimumWidth = 1501
+        let desk = [laptop, narrow]
+        window.constrain = { Self.keptBelowTheMenuBar($0, among: desk) }
+        let director = WindowDirector(displays: { desk })
+
+        for _ in 0..<5 { director.perform(.tile(.leftHalf), on: window) }
+
+        XCTAssertEqual(window.writes, [
+            Tile.leftHalf.frame(in: laptop.visibleFrame),
+            Tile.rightHalf.frame(in: narrow.visibleFrame),
+            Tile.leftHalf.frame(in: narrow.visibleFrame),
+            Tile.leftHalf.frame(in: narrow.visibleFrame),
+            Tile.leftHalf.frame(in: narrow.visibleFrame),
+        ])
+    }
+
     func testAWindowThatMacOSPulledBelowAMenuBarCountsAsInTheHalf() throws {
         // Right Half from the monitor leaves 780 of this window on the laptop, as above. Pulled
         // down off the half's top-left, it still counts as in the half, so the next Right Half
@@ -767,6 +793,24 @@ final class WindowDirectorTests: XCTestCase {
         director.perform(.tile(.leftHalf), on: window)
         window.catchUp()
         window.cocoaFrame = start
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testAnOldFrameWhereAnotherTileLeftTheWindowIsNotRememberedAsPlaced() {
+        // Pulled down 41pt wherever it lands, the window is recorded where Left Third left it.
+        // Read straight back after Left Half, it is still there, below the half's top without
+        // having moved: where another tile landed it, which says nothing of where the half does.
+        let window = FakeWindow(frame: floating)
+        window.constrain = { $0.offsetBy(dx: 0, dy: -41) }
+        let director = makeDirector()
+        director.perform(.tile(.leftThird), on: window)
+        let third = window.cocoaFrame
+        window.appliesLate = true
+        director.perform(.tile(.leftHalf), on: window)
+        window.catchUp()
+        window.cocoaFrame = third  // dragged back by hand
 
         director.perform(.tile(.leftHalf), on: window)
         XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))

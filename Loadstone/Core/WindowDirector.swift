@@ -161,14 +161,20 @@ final class WindowDirector {
     /// Sends the window to `target`, the frame of `tile`, then records where it actually ended
     /// up, so that pressing the same tile again can tell the window has not moved since. Recorded
     /// only if the read-back has the target's left edge and either its top-left corner or, once
-    /// the window has moved, a top no higher than the target's (`missedLanding` says which
-    /// failed). An app that rounds or caps a size normally keeps the corner. macOS keeps a
-    /// window's top below the menu bar of the display holding most of it, so a window held wider
-    /// than its tile and hanging mostly over a display whose menu bar is lower than the tile's
-    /// top is pulled down below that menu bar. It has still landed, and left unrecorded it would
-    /// bounce, as below; macOS never pulls a window up, so a read-back above the target does not
-    /// count. A read-back where the window was before the write is what an app still reporting
-    /// its old frame gives, so that counts only with the corner.
+    /// the window has moved or if it was already in the tile, a top no higher than the target's
+    /// (`missedLanding` says which failed). An app that rounds or caps a size normally keeps the
+    /// corner. macOS keeps a window's top below the menu bar of the display holding most of it,
+    /// so a window held wider than its tile and hanging mostly over a display whose menu bar is
+    /// lower than the tile's top is pulled down below that menu bar. It has still landed, and
+    /// left unrecorded it would bounce, as below; macOS never pulls a window up, so a read-back
+    /// above the target does not count. A read-back where the window was before the write is what
+    /// an app still reporting its old frame gives, so that counts only with the corner, unless
+    /// the window was already in the tile (`isPlaced`). Then it fills the tile or stands where it
+    /// landed the last time Loadstone sent it to this same frame, and recording that again adds
+    /// nothing. That is what Left or Right Half reads back at the edge of the desk from a window
+    /// pulled below a menu bar, which left unrecorded would go by the display under its centre at
+    /// the next press. Where another tile left the window says nothing of where this one does, so
+    /// that still counts only with the corner.
     ///
     /// That read-back is the one look this takes, which leaves two cases open, both from an app
     /// that applies the frame late. If the window's old frame already shared the target's
@@ -188,13 +194,15 @@ final class WindowDirector {
     ///
     /// Returns the outcome and, when a placement was recorded, where the window landed.
     private func place(_ window: some MovableWindow, key: WindowIdentity?, at target: CGRect, by tile: Tile, from current: CGRect) -> (outcome: CommandOutcome, landed: CGRect?) {
+        // Asked before the write, which drops the placement it goes by.
+        let wasPlaced = isPlaced(current, in: target, key: key)
         let applied = apply(target, to: window, key: key, from: current, remembering: current)
         guard applied.outcome == .moved, let key = applied.key else { return (applied.outcome, nil) }
         guard let readBack = window.cocoaFrame else {
             diagnose("\(tile.rawValue): could not read the frame back, so the placement is not recorded")
             return (applied.outcome, nil)
         }
-        if let missed = missedLanding(readBack, at: target, from: current) {
+        if let missed = missedLanding(readBack, at: target, from: current, wasPlaced: wasPlaced) {
             diagnose("\(tile.rawValue): read back \(readBack), \(missed), so the placement is not recorded")
             return (applied.outcome, nil)
         }
@@ -203,11 +211,12 @@ final class WindowDirector {
     }
 
     /// What keeps a window sent from `current` to `target`, which reads back at `readBack`, from
-    /// counting as landed there, or nil when nothing does. Cocoa space, so the top is `maxY`.
-    private func missedLanding(_ readBack: CGRect, at target: CGRect, from current: CGRect) -> String? {
+    /// counting as landed there, or nil when nothing does. `wasPlaced` says whether the window
+    /// was already in that tile before the write (`isPlaced`). Cocoa space, so the top is `maxY`.
+    private func missedLanding(_ readBack: CGRect, at target: CGRect, from current: CGRect, wasPlaced: Bool) -> String? {
         if abs(readBack.minX - target.minX) > 1 { return "off the left edge of \(target)" }
         if readBack.maxY > target.maxY + 1 { return "above the top of \(target)" }
-        if readBack.maxY < target.maxY - 1, readBack.isWithinAPoint(of: current) {
+        if readBack.maxY < target.maxY - 1, readBack.isWithinAPoint(of: current), !wasPlaced {
             return "below the top of \(target) without having moved"
         }
         return nil
