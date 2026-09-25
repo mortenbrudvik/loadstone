@@ -341,6 +341,40 @@ final class WindowDirectorTests: XCTestCase {
         XCTAssertEqual(window.cocoaFrame, Tile.leftHalf.frame(in: right.visibleFrame))
     }
 
+    func testAWindowResizedSinceItWasPlacedGoesBackIntoTheHalfInsteadOfContinuing() throws {
+        let window = FakeWindow(frame: floating)
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+        let landed = try XCTUnwrap(window.cocoaFrame)
+        // Resized by hand from its bottom-right corner, which keeps the top-left where it landed.
+        window.cocoaFrame = CGRect(x: landed.minX, y: landed.maxY - 601, width: 901, height: 601)
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testAWindowAnotherTileLeftAtTheHalfsTopLeftGoesIntoTheHalfInsteadOfContinuing() {
+        // Each first tile shares the half's top-left corner, so the window still stands where
+        // that tile put it, with the corner the half would give it. Only a placement sent to the
+        // half's own frame counts as in the half.
+        let cases: [(first: Tile, half: Tile, start: CGRect, display: Display)] = [
+            (.maximize, .leftHalf, floating, right),
+            (.topLeft, .leftHalf, floating, right),
+            (.topHalf, .leftHalf, floating, right),
+            (.leftThird, .leftHalf, floating, right),
+            (.leftTwoThirds, .leftHalf, floating, right),
+            (.topRight, .rightHalf, original, primary),
+        ]
+        for (first, half, start, display) in cases {
+            let window = FakeWindow(frame: start)
+            let director = makeDirector()
+            director.perform(.tile(first), on: window)
+
+            director.perform(.tile(half), on: window)
+            XCTAssertEqual(window.writes.last, half.frame(in: display.visibleFrame), "\(first) then \(half)")
+        }
+    }
+
     func testAWindowMovedToAnotherDisplaySinceItWasPlacedIsTiledOnTheDisplayItIsNowOn() {
         let window = FakeWindow(frame: floating)
         let director = makeDirector()
