@@ -21,7 +21,8 @@ final class WindowDirector {
 
     /// Pre-Loadstone frame per window. Recorded on the first command of any kind (tile, center,
     /// display move), never overwritten, removed by `.restore`, so Restore returns the window
-    /// to where it was before Loadstone first touched it, not to the previous tile. Entries are
+    /// to where it was before Loadstone first touched it, not to the previous tile. A window
+    /// known by a title that a write changes takes its entry along to the new title. Entries are
     /// dropped when their process quits (`forgetWindows(ofProcess:)`) because macOS reuses
     /// window ids and a new window could otherwise inherit a stale memory.
     private var originals: [WindowIdentity: CGRect] = [:]
@@ -230,8 +231,9 @@ final class WindowDirector {
     ///
     /// Returns the outcome and the key the window goes by after the write, which the Restore
     /// frame here and a tile's placement in `place` are recorded under. That is `key`, except
-    /// that a title-based one is read again once the write is accepted (`keyAfterWrite`); the
-    /// placement dropped is still the one under `key`, which the window was looked up by.
+    /// that a title-based one is read again once the write is accepted (`keyAfterWrite`). The
+    /// placement dropped is still the one under `key`, which the window was looked up by, and a
+    /// Restore frame recorded under `key` moves across to the new one.
     private func apply(_ frame: CGRect, to window: some MovableWindow, key: WindowIdentity?, from current: CGRect, remembering previous: CGRect?) -> (outcome: CommandOutcome, key: WindowIdentity?) {
         let error = window.setCocoaFrame(frame)
         guard error == .success else {
@@ -242,7 +244,7 @@ final class WindowDirector {
         }
         if let key { placements.removeValue(forKey: key) }
         let settled = keyAfterWrite(key, of: window)
-        if let previous { rememberIfNeeded(previous, for: settled) }
+        if let previous { rememberIfNeeded(previous, for: settled, lookedUpBy: key) }
         return (.moved, settled)
     }
 
@@ -255,9 +257,18 @@ final class WindowDirector {
         return window.identity
     }
 
-    private func rememberIfNeeded(_ frame: CGRect, for key: WindowIdentity?) {
+    /// Records `frame` under `key`, the key the window goes by after the write, as where Restore
+    /// returns it, unless something is recorded there already. A frame recorded under `oldKey`,
+    /// the one the window was looked up by, moves across instead: the two differ only for a
+    /// title-based identity whose write renamed the window, and that frame is the one the window's
+    /// first command recorded.
+    private func rememberIfNeeded(_ frame: CGRect, for key: WindowIdentity?, lookedUpBy oldKey: WindowIdentity?) {
         guard let key, originals[key] == nil else { return }
-        originals[key] = frame
+        if let oldKey, let first = originals.removeValue(forKey: oldKey) {
+            originals[key] = first
+        } else {
+            originals[key] = frame
+        }
     }
 
     /// The display a tile or Center works on for a window at `frame`. While the window is still

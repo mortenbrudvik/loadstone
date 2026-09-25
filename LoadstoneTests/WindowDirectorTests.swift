@@ -227,6 +227,33 @@ final class WindowDirectorTests: XCTestCase {
         XCTAssertEqual(window.cocoaFrame, floating)
     }
 
+    func testRestoreAfterTwoResizesReturnsAWindowWhoseTitleFollowsItsSizeToWhereItStarted() {
+        let window = FakeWindow(frame: floating)
+        window.titleFollowsSize = true
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+        director.perform(.tile(.maximize), on: window)
+
+        XCTAssertEqual(director.perform(.restore, on: window), .moved)
+        XCTAssertEqual(window.cocoaFrame, floating)
+    }
+
+    func testTheRestoreFrameOfAWindowWhoseTitleFollowsItsSizeIsNeverOverwritten() {
+        // Resized by hand, the window goes by a title nothing is recorded under, so Center records
+        // its frame there. Left Half then gives it back the title its first command recorded under,
+        // which already holds the frame from before Loadstone first touched it.
+        let window = FakeWindow(frame: floating)
+        window.titleFollowsSize = true
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+        window.cocoaFrame = CGRect(x: 2300, y: 200, width: 901, height: 601)
+        director.perform(.center, on: window)
+        director.perform(.tile(.leftHalf), on: window)
+
+        XCTAssertEqual(director.perform(.restore, on: window), .moved)
+        XCTAssertEqual(window.cocoaFrame, floating)
+    }
+
     func testARejectedCommandIsNotRememberedForRestore() {
         let window = FakeWindow(frame: original)
         let director = makeDirector()
