@@ -296,14 +296,34 @@ final class WindowDirectorTests: XCTestCase {
     }
 
     func testARefusedHalfIsNotRememberedAsPlaced() {
-        let window = FakeWindow(frame: floating)
+        // The refused window stays where it was, which shares the half's top-left, so only the
+        // refusal itself keeps that frame from being recorded as where the half left it.
+        let window = FakeWindow(frame: flushTopLeft)
         let director = makeDirector()
         window.rejectWith = .cannotComplete
-        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(director.perform(.tile(.leftHalf), on: window), .rejected(.cannotComplete))
         window.rejectWith = nil
 
         director.perform(.tile(.leftHalf), on: window)
         XCTAssertEqual(window.cocoaFrame, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testARefusedContinuationKeepsThePlacementAndTheRestoreFrame() {
+        let window = FakeWindow(frame: floating)
+        window.grid = terminalCell
+        let director = makeDirector()
+        director.snap(.leftHalf, window: window, on: right)
+        let placed = window.cocoaFrame
+
+        window.rejectWith = .cannotComplete
+        XCTAssertEqual(director.perform(.tile(.leftHalf), on: window), .rejected(.cannotComplete))
+        XCTAssertEqual(window.cocoaFrame, placed)
+        window.rejectWith = nil
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.rightHalf.frame(in: primary.visibleFrame))
+        XCTAssertEqual(director.perform(.restore, on: window), .moved)
+        XCTAssertEqual(window.writes.last, floating)
     }
 
     func testAWindowStillReportingItsOldFrameIsNotRememberedAsPlaced() {
@@ -315,6 +335,34 @@ final class WindowDirectorTests: XCTestCase {
         director.perform(.tile(.leftHalf), on: window)
         window.catchUp()
         window.cocoaFrame = floating
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testAnOldFrameOnlyOnTheHalfsLeftEdgeIsNotRememberedAsPlaced() {
+        // Flush with the display's left edge, below its top.
+        let start = CGRect(x: 1920, y: 100, width: 800, height: 600)
+        let window = FakeWindow(frame: start)
+        window.appliesLate = true
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+        window.catchUp()
+        window.cocoaFrame = start
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testAnOldFrameOnlyAtTheHalfsTopIsNotRememberedAsPlaced() {
+        // Flush with the display's top, right of its left edge.
+        let start = CGRect(x: 2200, y: 515, width: 800, height: 600)
+        let window = FakeWindow(frame: start)
+        window.appliesLate = true
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+        window.catchUp()
+        window.cocoaFrame = start
 
         director.perform(.tile(.leftHalf), on: window)
         XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
