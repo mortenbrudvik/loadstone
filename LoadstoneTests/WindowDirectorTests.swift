@@ -12,6 +12,10 @@ final class WindowDirectorTests: XCTestCase {
         /// Set to act like Terminal or iTerm2, which round a window's size down to whole character
         /// cells and keep its top-left corner, so it never fills a tile exactly.
         var grid: CGSize?
+        /// Set to act like an app that applies a frame only after the write has returned, so the
+        /// frame read straight back is still the old one. `catchUp()` applies it.
+        var appliesLate = false
+        private var pending: CGRect?
 
         init(frame: CGRect, identity: WindowIdentity? = .cgWindow(1, pid: 42)) {
             cocoaFrame = frame
@@ -22,14 +26,23 @@ final class WindowDirectorTests: XCTestCase {
         func setCocoaFrame(_ frame: CGRect) -> AXError {
             if let rejectWith { return rejectWith }
             writes.append(frame)
+            var landed = frame
             if let grid {
                 let width = (frame.width / grid.width).rounded(.down) * grid.width
                 let height = (frame.height / grid.height).rounded(.down) * grid.height
-                cocoaFrame = CGRect(x: frame.minX, y: frame.maxY - height, width: width, height: height)
+                landed = CGRect(x: frame.minX, y: frame.maxY - height, width: width, height: height)
+            }
+            if appliesLate {
+                pending = landed
             } else {
-                cocoaFrame = frame
+                cocoaFrame = landed
             }
             return .success
+        }
+
+        func catchUp() {
+            if let pending { cocoaFrame = pending }
+            pending = nil
         }
     }
 
@@ -277,6 +290,50 @@ final class WindowDirectorTests: XCTestCase {
 
         director.perform(.tile(.leftHalf), on: window)
         XCTAssertEqual(window.cocoaFrame, Tile.rightHalf.frame(in: primary.visibleFrame))
+    }
+
+    func testARefusedHalfIsNotRememberedAsPlaced() {
+        let window = FakeWindow(frame: floating)
+        let director = makeDirector()
+        window.rejectWith = .cannotComplete
+        director.perform(.tile(.leftHalf), on: window)
+        window.rejectWith = nil
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.cocoaFrame, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testAWindowStillReportingItsOldFrameIsNotRememberedAsPlaced() {
+        XCTExpectFailure("Placements record a frame the window has not moved to until the next commit")
+        // Read straight back, the frame is still the old one. Restore later returns the window to
+        // exactly that frame, where a remembered placement would throw it onto the next display.
+        let window = FakeWindow(frame: floating)
+        window.appliesLate = true
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+        window.catchUp()
+        director.perform(.restore, on: window)
+        window.catchUp()
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testAHalfWhoseDisplayHasChangedSinceIsRefittedRatherThanCarriedOn() {
+        XCTExpectFailure("Placements outlive a change to the display until the next commit")
+        // A new resolution leaves the window where it was, which is no longer the left half.
+        var desk = [primary, right]
+        let director = WindowDirector(displays: { desk })
+        let window = FakeWindow(frame: floating)
+        director.perform(.tile(.leftHalf), on: window)
+        let roomier = Display(
+            frame: CGRect(x: 1920, y: -300, width: 3008, height: 1692),
+            visibleFrame: CGRect(x: 1920, y: -300, width: 3008, height: 1667)
+        )
+        desk = [primary, roomier]
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.cocoaFrame, Tile.leftHalf.frame(in: roomier.visibleFrame))
     }
 
     func testForgettingAProcessDropsWhereItsWindowsWerePut() {

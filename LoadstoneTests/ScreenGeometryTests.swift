@@ -155,12 +155,10 @@ final class ScreenGeometryTests: XCTestCase {
         XCTAssertEqual(ScreenGeometry.adjacent(to: primary, toward: .left, in: [primary, lower, upper]), lower)
     }
 
-    func testAStackedPairSharingEqualHeightResolvesTheSameInAnyListOrder() {
+    func testOfAStackedPairSharingEqualHeightTheHigherIsAdjacentInAnyListOrder() {
         let upper = display(x: -1920, y: 540, width: 1920, height: 1080)
         let lower = display(x: -1920, y: -540, width: 1920, height: 1080)
-        let one = ScreenGeometry.adjacent(to: primary, toward: .left, in: [primary, upper, lower])
-        let other = ScreenGeometry.adjacent(to: primary, toward: .left, in: [primary, lower, upper])
-        XCTAssertNotNil(one)
-        XCTAssertEqual(one, other)
+        XCTAssertEqual(ScreenGeometry.adjacent(to: primary, toward: .left, in: [primary, upper, lower]), upper)
+        XCTAssertEqual(ScreenGeometry.adjacent(to: primary, toward: .left, in: [primary, lower, upper]), upper)
     }
 }
