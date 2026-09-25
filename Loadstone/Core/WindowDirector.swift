@@ -28,12 +28,12 @@ final class WindowDirector {
     private var originals: [WindowIdentity: CGRect] = [:]
     /// The tile Loadstone last put each window in, the frame it sent the window to, and where
     /// the window reported itself once there (where it landed), which differs when its app rounds
-    /// or caps the size. That is how a second Left or Right Half knows the window is still in
-    /// that half when it never fills the tile exactly, and which display a tile or Center works
-    /// on while the window is still where it landed. Every frame the window accepts from
-    /// Loadstone drops the entry, and a tile then records a new one; a refused frame drops it if
-    /// the window moved anyway or its frame can no longer be read, and so does the window's
-    /// process quitting, along with `originals`.
+    /// or caps the size, or when macOS pulls the window down below a menu bar. That is how a
+    /// second Left or Right Half knows the window is still in that half when it never fills the
+    /// tile exactly, and which display a tile or Center works on while the window is still where
+    /// it landed. Every frame the window accepts from Loadstone drops the entry, and a tile then
+    /// records a new one; a refused frame drops it if the window moved anyway or its frame can no
+    /// longer be read, and so does the window's process quitting, along with `originals`.
     private var placements: [WindowIdentity: Placement] = [:]
     private let displays: () -> [Display]
     /// Takes the info-level lines that say why a half press did or did not carry a window on,
@@ -160,9 +160,15 @@ final class WindowDirector {
 
     /// Sends the window to `target`, the frame of `tile`, then records where it actually ended
     /// up, so that pressing the same tile again can tell the window has not moved since. Recorded
-    /// only once the window's top-left corner is where it was sent: an app that rounds or caps a
-    /// size normally keeps that corner, while one still reporting its old frame has not moved
-    /// yet, so a read-back that misses the corner leaves the window with no entry.
+    /// only if the read-back has the target's left edge and either its top-left corner or, once
+    /// the window has moved, a top no higher than the target's (`missedLanding` says which
+    /// failed). An app that rounds or caps a size normally keeps the corner. macOS keeps a
+    /// window's top below the menu bar of the display holding most of it, so a window held wider
+    /// than its tile and hanging mostly over a display whose menu bar is lower than the tile's
+    /// top is pulled down below that menu bar. It has still landed, and left unrecorded it would
+    /// bounce, as below; macOS never pulls a window up, so a read-back above the target does not
+    /// count. A read-back where the window was before the write is what an app still reporting
+    /// its old frame gives, so that counts only with the corner.
     ///
     /// That read-back is the one look this takes, which leaves two cases open, both from an app
     /// that applies the frame late. If the window's old frame already shared the target's
@@ -172,12 +178,13 @@ final class WindowDirector {
     /// title that follows its size is carried on even when a Loadstone tile put it back: the
     /// title read after the write is stale as well, so the entry sits under the old title, which
     /// the next write, looked up by the new one, does not drop. And a window carried on to
-    /// another display reads back its old frame, off the target's top-left, so the move goes
-    /// unrecorded. A window held wider than its tile keeps its top-left and sticks out to the
-    /// right, so one carried left onto a display narrower than itself reaches back over the
-    /// display it came from, with its centre there; its next Left Half goes by that display, and
-    /// it bounces between the two. Closing either would take watching the window, with an
-    /// AXObserver recording where it settles and dropping the entry when it moves anywhere else.
+    /// another display reads back its old frame, which has not moved and is off the target's
+    /// top-left, so the move goes unrecorded. A window held wider than its tile keeps its
+    /// top-left and sticks out to the right, so one carried left onto a display narrower than
+    /// itself reaches back over the display it came from, with its centre there; its next Left
+    /// Half goes by that display, and it bounces between the two. Closing either would take
+    /// watching the window, with an AXObserver recording where it settles and dropping the entry
+    /// when it moves anywhere else.
     ///
     /// Returns the outcome and, when a placement was recorded, where the window landed.
     private func place(_ window: some MovableWindow, key: WindowIdentity?, at target: CGRect, by tile: Tile, from current: CGRect) -> (outcome: CommandOutcome, landed: CGRect?) {
@@ -187,12 +194,23 @@ final class WindowDirector {
             diagnose("\(tile.rawValue): could not read the frame back, so the placement is not recorded")
             return (applied.outcome, nil)
         }
-        guard readBack.sharesTopLeft(with: target) else {
-            diagnose("\(tile.rawValue): read back \(readBack), off the top-left of \(target), so the placement is not recorded")
+        if let missed = missedLanding(readBack, at: target, from: current) {
+            diagnose("\(tile.rawValue): read back \(readBack), \(missed), so the placement is not recorded")
             return (applied.outcome, nil)
         }
         placements[key] = Placement(tile: tile, target: target, landed: readBack)
         return (applied.outcome, readBack)
+    }
+
+    /// What keeps a window sent from `current` to `target`, which reads back at `readBack`, from
+    /// counting as landed there, or nil when nothing does. Cocoa space, so the top is `maxY`.
+    private func missedLanding(_ readBack: CGRect, at target: CGRect, from current: CGRect) -> String? {
+        if abs(readBack.minX - target.minX) > 1 { return "off the left edge of \(target)" }
+        if readBack.maxY > target.maxY + 1 { return "above the top of \(target)" }
+        if readBack.maxY < target.maxY - 1, readBack.isWithinAPoint(of: current) {
+            return "below the top of \(target) without having moved"
+        }
+        return nil
     }
 
     /// Whether a window at `current` is already in the tile whose frame is `target`: it fills the
@@ -209,15 +227,16 @@ final class WindowDirector {
     /// Fits a window that is not in the half `tile` into it, at `target`, and logs why it was not
     /// carried on in three cases. Either the window had a placement by this same tile that no
     /// longer held, because the window had moved since or the display had changed; or it reads
-    /// back where it was: a Terminal window Loadstone has not put in the half since it started,
-    /// one whose record another command dropped, or a minimum-width window that Left Third left
-    /// where Left Half leaves it too, none of which the press moves, or a window at the half's
-    /// top-left whose app applies the frame late and still reports the old one, which moves once
-    /// the app catches up; or, with no placement standing, it had the half's top-left corner
-    /// without filling it, and the fit can be too small to see. Otherwise the fit goes unlogged:
-    /// from where another tile put the window, or from anywhere else, it normally shows, though
-    /// from a few points off the half it can be too small to see as well. A refused fit is
-    /// reported as a refusal.
+    /// back where it was, at the half's top-left, the one place `place` records a window that
+    /// has not moved: a Terminal window Loadstone has not put in the half since it started, one
+    /// whose record another command dropped, or a minimum-width window that Left Third left where
+    /// Left Half leaves it too, none of which the press moves, or a window whose app applies the
+    /// frame late and still reports the old one, which moves once the app catches up; or, with no
+    /// placement standing, it had the half's top-left corner without filling it, and the fit can
+    /// be too small to see. Otherwise the fit goes unlogged: from where another tile put the
+    /// window, or from anywhere else, it normally shows, though from a few points off the half it
+    /// can be too small to see as well. A fit left unrecorded has `place` say what its read-back
+    /// missed, and a refused fit is reported as a refusal.
     private func fit(_ window: some MovableWindow, key: WindowIdentity?, into tile: Tile, at target: CGRect, from current: CGRect) -> CommandOutcome {
         let last = key.flatMap { placements[$0] }
         let hadStandingPlacement = standingPlacement(for: key, at: current) != nil

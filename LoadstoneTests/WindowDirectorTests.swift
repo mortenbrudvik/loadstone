@@ -19,6 +19,10 @@ final class WindowDirectorTests: XCTestCase {
         /// Set to act like an app that will not make the window narrower than this. Like the grid,
         /// it keeps the top-left corner, so the window grows to the right.
         var minimumWidth: CGFloat?
+        /// Set to act like macOS, which moves a window after its app has sized and placed it, as
+        /// in keeping its top below a menu bar (`keptBelowTheMenuBar`). Applied to where the
+        /// window lands, after the grid and the minimum width.
+        var constrain: ((CGRect) -> CGRect)?
         /// Set to act like an app that applies a frame only after the write has returned, so the
         /// frame read straight back is still the old one. `catchUp()` applies it.
         var appliesLate = false
@@ -61,6 +65,9 @@ final class WindowDirectorTests: XCTestCase {
             if let minimumWidth {
                 landed.size.width = max(landed.width, minimumWidth)
             }
+            if let constrain {
+                landed = constrain(landed)
+            }
             if appliesLate {
                 pending = landed
             } else {
@@ -95,6 +102,29 @@ final class WindowDirectorTests: XCTestCase {
     private let flushTopLeft = CGRect(x: 1920, y: 515, width: 800, height: 600)
     /// A Terminal character cell. No half's width or height here is a whole number of them.
     private let terminalCell = CGSize(width: 7, height: 17)
+    /// A laptop with a 32pt menu bar, and to its left a monitor with none, their tops level, so
+    /// the monitor's visible frame reaches 32pt higher than the laptop's.
+    private let laptop = Display(
+        frame: CGRect(x: 0, y: 0, width: 1201, height: 901),
+        visibleFrame: CGRect(x: 0, y: 0, width: 1201, height: 869)
+    )
+    private let monitor = Display(
+        frame: CGRect(x: -1441, y: 48, width: 1441, height: 853),
+        visibleFrame: CGRect(x: -1441, y: 48, width: 1441, height: 853)
+    )
+
+    /// Where macOS leaves a window that lands at `frame` with `displays` attached: it keeps the
+    /// window's top below the menu bar of the display holding the largest part of it, pulling
+    /// the window down when it reaches higher.
+    private static func keptBelowTheMenuBar(_ frame: CGRect, among displays: [Display]) -> CGRect {
+        func area(on display: Display) -> CGFloat {
+            let part = display.frame.intersection(frame)
+            return part.isNull ? 0 : part.width * part.height
+        }
+        guard let holder = displays.max(by: { area(on: $0) < area(on: $1) }),
+              frame.maxY > holder.visibleFrame.maxY else { return frame }
+        return frame.offsetBy(dx: 0, dy: holder.visibleFrame.maxY - frame.maxY)
+    }
 
     private func makeDirector() -> WindowDirector {
         WindowDirector(displays: { [self.primary, self.right] })
@@ -369,6 +399,45 @@ final class WindowDirectorTests: XCTestCase {
             Tile.leftHalf.frame(in: left.visibleFrame),
             Tile.leftHalf.frame(in: left.visibleFrame),
         ])
+    }
+
+    func testRepeatedLeftHalfWalksAWindowThatMacOSPullsBelowAMenuBarWithoutBouncing() {
+        // The monitor's right half starts at x = -721 and is 721 wide, so this window, which will
+        // not go below 1501, reaches 780 onto the laptop: most of it, so macOS pulls it down 32pt,
+        // below the laptop's menu bar, off the half's top-left. Its centre, at
+        // -721 + 1501 / 2 = 29.5, is on the laptop too. In the monitor's left half, 1441 of it is
+        // on the monitor and it keeps the half's top.
+        let window = FakeWindow(frame: CGRect(x: 100, y: 100, width: 1501, height: 600))
+        window.minimumWidth = 1501
+        let desk = [laptop, monitor]
+        window.constrain = { Self.keptBelowTheMenuBar($0, among: desk) }
+        let director = WindowDirector(displays: { desk })
+
+        for _ in 0..<4 { director.perform(.tile(.leftHalf), on: window) }
+
+        XCTAssertEqual(window.writes, [
+            Tile.leftHalf.frame(in: laptop.visibleFrame),
+            Tile.rightHalf.frame(in: monitor.visibleFrame),
+            Tile.leftHalf.frame(in: monitor.visibleFrame),
+            Tile.leftHalf.frame(in: monitor.visibleFrame),
+        ])
+    }
+
+    func testAWindowThatMacOSPulledBelowAMenuBarCountsAsInTheHalf() throws {
+        // Right Half from the monitor leaves 780 of this window on the laptop, as above. Pulled
+        // down off the half's top-left, it still counts as in the half, so the next Right Half
+        // carries it on.
+        let window = FakeWindow(frame: CGRect(x: -1301, y: 100, width: 1501, height: 600))
+        window.minimumWidth = 1501
+        let desk = [laptop, monitor]
+        window.constrain = { Self.keptBelowTheMenuBar($0, among: desk) }
+        let director = WindowDirector(displays: { desk })
+        director.perform(.tile(.rightHalf), on: window)
+        let landed = try XCTUnwrap(window.cocoaFrame)
+        XCTAssertEqual(landed.maxY, laptop.visibleFrame.maxY, "pulled down below the laptop's menu bar")
+
+        XCTAssertEqual(director.perform(.tile(.rightHalf), on: window), .moved)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: laptop.visibleFrame))
     }
 
     func testCenterWorksOnTheDisplayAWiderWindowWasPlacedOn() throws {
@@ -654,7 +723,8 @@ final class WindowDirectorTests: XCTestCase {
     }
 
     func testAnOldFrameOnlyOnTheHalfsLeftEdgeIsNotRememberedAsPlaced() {
-        // Flush with the display's left edge, below its top.
+        // Flush with the display's left edge, below its top, as a window macOS pulled down below
+        // a menu bar would be; but read straight back, the window has not moved.
         let start = CGRect(x: 1920, y: 100, width: 800, height: 600)
         let window = FakeWindow(frame: start)
         window.appliesLate = true
@@ -676,6 +746,28 @@ final class WindowDirectorTests: XCTestCase {
         director.perform(.tile(.leftHalf), on: window)
         window.catchUp()
         window.cocoaFrame = start
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testAWindowThatLandsAboveTheHalfsTopIsNotRememberedAsPlaced() {
+        // macOS only pulls a window down, below a menu bar, so this one went higher some other way.
+        let window = FakeWindow(frame: floating)
+        window.constrain = { $0.offsetBy(dx: 0, dy: 41) }
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testAWindowThatLandsOffTheHalfsLeftEdgeIsNotRememberedAsPlaced() {
+        // Moved, and level with the half's top, but 41pt right of its left edge.
+        let window = FakeWindow(frame: floating)
+        window.constrain = { $0.offsetBy(dx: 41, dy: 0) }
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
 
         director.perform(.tile(.leftHalf), on: window)
         XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
@@ -775,8 +867,8 @@ final class WindowDirectorTests: XCTestCase {
     // A half press logs carrying a window on and stopping at the edge of the desk. A fit into
     // the half explains itself when Loadstone last put the window in that half, when the press
     // leaves it where it was, or when it had the half's top-left with no placement standing, and
-    // otherwise goes unlogged. Each test starts from empty lines, or clears them, before the
-    // press it is about.
+    // otherwise goes unlogged. A tile whose placement goes unrecorded says what its read-back
+    // missed. Each test starts from empty lines, or clears them, before the press it is about.
 
     func testAFirstPressIsLoggedOnlyForAWindowThatHadTheHalfsTopLeft() {
         // From anywhere else the fit shows. From the half's top-left corner, with nothing to say
@@ -870,6 +962,23 @@ final class WindowDirectorTests: XCTestCase {
             XCTAssertEqual(window.cocoaFrame, before, "the press changed nothing that shows")
             XCTAssertEqual(diagnostics.lines.count, 1, "\(diagnostics.lines)")
             XCTAssertTrue(diagnostics.lines.allSatisfy { $0.contains("read back where it was") }, "\(diagnostics.lines)")
+        }
+    }
+
+    func testAPlacementThatGoesUnrecordedSaysWhatTheReadBackMissed() {
+        let offTheLeftEdge = FakeWindow(frame: floating)
+        offTheLeftEdge.constrain = { $0.offsetBy(dx: 41, dy: 0) }
+        let aboveTheTop = FakeWindow(frame: floating)
+        aboveTheTop.constrain = { $0.offsetBy(dx: 0, dy: 41) }
+        // Flush with the display's left edge, below its top, and still reporting that frame.
+        let late = FakeWindow(frame: CGRect(x: 1920, y: 100, width: 800, height: 600))
+        late.appliesLate = true
+
+        for (window, missed) in [(offTheLeftEdge, "off the left edge of"), (aboveTheTop, "above the top of"), (late, "without having moved")] {
+            let diagnostics = Diagnostics()
+            makeDirector(diagnosingInto: diagnostics).perform(.tile(.leftHalf), on: window)
+            XCTAssertEqual(diagnostics.lines.count, 1, "\(diagnostics.lines)")
+            XCTAssertTrue(diagnostics.lines.allSatisfy { $0.contains(missed) && $0.contains("not recorded") }, "\(diagnostics.lines)")
         }
     }
 
