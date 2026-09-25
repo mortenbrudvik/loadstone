@@ -28,7 +28,8 @@ final class WindowDirector {
     /// The tile frame Loadstone last sent each window to, and where the window reported itself
     /// once there, which differs when its app rounds or caps the size. That is how a second Left
     /// or Right Half knows the window is still in that half when it never fills the tile exactly.
-    /// Dropped with `originals` when the window's process quits.
+    /// The next tile replaces the entry; Restore, Center and a display move drop it, and so does
+    /// the window's process quitting, along with `originals`.
     private var placements: [WindowIdentity: Placement] = [:]
     private let displays: () -> [Display]
 
@@ -81,7 +82,7 @@ final class WindowDirector {
             return place(window, in: tile, on: display, remembering: current)
         case .center:
             guard let display = display(for: current, in: displays) else { return .noDisplay }
-            return apply(Layout.centered(current, in: display.visibleFrame), to: window, remembering: current)
+            return relocate(window, to: Layout.centered(current, in: display.visibleFrame), remembering: current)
         case .restore:
             // Restore must not record: it would store the current frame and then "restore" to it.
             // The memory is dropped only once the window has actually accepted the old frame, so
@@ -89,7 +90,7 @@ final class WindowDirector {
             guard let key = window.identity, let original = originals[key] else {
                 return .nothingToRestore
             }
-            let outcome = apply(original, to: window, remembering: nil)
+            let outcome = relocate(window, to: original, remembering: nil)
             if outcome == .moved { originals.removeValue(forKey: key) }
             return outcome
         case .nextDisplay:
@@ -117,13 +118,30 @@ final class WindowDirector {
         guard let display = display(for: current, in: displays),
               let neighbor = ScreenGeometry.neighbor(of: display, delta: delta, in: displays) else { return .noDisplay }
         guard neighbor != display else { return .noOtherDisplay }
-        return apply(Layout.mapped(current, from: display.visibleFrame, to: neighbor.visibleFrame), to: window, remembering: current)
+        return relocate(window, to: Layout.mapped(current, from: display.visibleFrame, to: neighbor.visibleFrame), remembering: current)
+    }
+
+    /// Writes a frame that is not a tile (Center, Restore, a display move) and, once the window
+    /// accepts it, drops the window's placement. The placement says where a tile put the window;
+    /// once Loadstone has moved it anywhere else it can only mislead, most of all when it holds
+    /// a stale read-back that the window can later be put back on.
+    private func relocate(_ window: some MovableWindow, to frame: CGRect, remembering previous: CGRect?) -> CommandOutcome {
+        let outcome = apply(frame, to: window, remembering: previous)
+        if outcome == .moved, let key = window.identity { placements.removeValue(forKey: key) }
+        return outcome
     }
 
     /// Lays `tile` into `display`, then records where the window actually ended up, so that
     /// pressing the same tile again can tell the window has not moved since. Recorded only once
     /// the window's top-left corner is where it was sent: an app that rounds or caps a size keeps
     /// that corner, while one still reporting its old frame has not moved yet.
+    ///
+    /// An app that applies the frame late, and whose old frame already shared the target's
+    /// top-left, reads back that old frame and has it recorded. Once Loadstone moves the window
+    /// again the entry goes; but returned to exactly that frame by anything else (a title-bar
+    /// double-click, a drag), the window is carried on at the next press. Closing that would
+    /// take watching the window, with an AXObserver dropping the entry when it moves anywhere
+    /// but its landing.
     private func place(_ window: some MovableWindow, in tile: Tile, on display: Display, remembering previous: CGRect) -> CommandOutcome {
         let target = tile.frame(in: display.visibleFrame)
         let outcome = apply(target, to: window, remembering: previous)

@@ -61,6 +61,9 @@ final class WindowDirectorTests: XCTestCase {
     private let original = CGRect(x: 100, y: 100, width: 800, height: 600)
     /// On the right-hand display and in no tile.
     private let floating = CGRect(x: 2200, y: 100, width: 800, height: 600)
+    /// On the right-hand display, flush with the top-left corner of its visible frame, so it
+    /// shares that corner with the display's left half without being in it.
+    private let flushTopLeft = CGRect(x: 1920, y: 515, width: 800, height: 600)
     /// A Terminal character cell. No half's width or height here is a whole number of them.
     private let terminalCell = CGSize(width: 7, height: 17)
 
@@ -304,15 +307,67 @@ final class WindowDirectorTests: XCTestCase {
     }
 
     func testAWindowStillReportingItsOldFrameIsNotRememberedAsPlaced() {
-        // Read straight back, the frame is still the old one. Restore later returns the window to
-        // exactly that frame, where a remembered placement would throw it onto the next display.
+        // Read straight back, the frame is still the old one. Dragged back to exactly that frame,
+        // the window would be thrown onto the next display by a remembered placement.
         let window = FakeWindow(frame: floating)
+        window.appliesLate = true
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+        window.catchUp()
+        window.cocoaFrame = floating
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    // An app that applies frames late reports the old frame when read straight back. A window
+    // flush in the display's top-left corner already shares the half's top-left, so that stale
+    // frame is recorded as where the half left it. The tests below put the window back on it
+    // after another command has moved it elsewhere, and expect the next Left Half to halve it.
+
+    func testRestoreForgetsWhereAHalfPutTheWindow() {
+        let window = FakeWindow(frame: flushTopLeft)
         window.appliesLate = true
         let director = makeDirector()
         director.perform(.tile(.leftHalf), on: window)
         window.catchUp()
         director.perform(.restore, on: window)
         window.catchUp()
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testCenterForgetsWhereAHalfPutTheWindow() {
+        let window = FakeWindow(frame: flushTopLeft)
+        window.appliesLate = true
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+        window.catchUp()
+        director.perform(.center, on: window)
+        window.catchUp()
+        window.cocoaFrame = flushTopLeft  // dragged back by hand
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testMovingToAnotherDisplayForgetsWhereAHalfPutTheWindow() throws {
+        let window = FakeWindow(frame: flushTopLeft)
+        window.appliesLate = true
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+        window.catchUp()
+        window.cocoaFrame = flushTopLeft  // dragged back by hand
+        director.perform(.nextDisplay, on: window)
+        window.catchUp()
+        director.perform(.previousDisplay, on: window)
+        window.catchUp()
+        let back = try XCTUnwrap(window.cocoaFrame)
+        XCTAssertEqual(back.minX, flushTopLeft.minX, accuracy: 1, "the round trip lands back on the recorded frame")
+        XCTAssertEqual(back.maxX, flushTopLeft.maxX, accuracy: 1)
+        XCTAssertEqual(back.minY, flushTopLeft.minY, accuracy: 1)
+        XCTAssertEqual(back.maxY, flushTopLeft.maxY, accuracy: 1)
 
         director.perform(.tile(.leftHalf), on: window)
         XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
