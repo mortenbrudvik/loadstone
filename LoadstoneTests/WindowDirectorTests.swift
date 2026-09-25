@@ -19,9 +19,9 @@ final class WindowDirectorTests: XCTestCase {
         /// Set to act like an app that will not make the window narrower than this. Like the grid,
         /// it keeps the top-left corner, so the window grows to the right.
         var minimumWidth: CGFloat?
-        /// Set to act like macOS, which moves a window after its app has sized and placed it, as
-        /// in keeping its top below a menu bar (`keptBelowTheMenuBar`). Applied to where the
-        /// window lands, after the grid and the minimum width.
+        /// Set to move the window after its app has sized and placed it, as macOS does in keeping
+        /// its top below a menu bar (`keptBelowTheMenuBar`), or as something else might. Applied
+        /// to where the window lands, after the grid and the minimum width.
         var constrain: ((CGRect) -> CGRect)?
         /// Set to act like an app that applies a frame only after the write has returned, so the
         /// frame read straight back is still the old one. `catchUp()` applies it.
