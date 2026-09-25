@@ -25,15 +25,16 @@ final class WindowDirector {
     /// dropped when their process quits (`forgetWindows(ofProcess:)`) because macOS reuses
     /// window ids and a new window could otherwise inherit a stale memory.
     private var originals: [WindowIdentity: CGRect] = [:]
-    /// The tile Loadstone last laid each window into, with the frame the window reported once it
-    /// had taken it. That is how a second Left or Right Half knows the window is still in that
-    /// half when its app never fills the tile exactly. Dropped with `originals`.
+    /// The tile frame Loadstone last sent each window to, and where the window reported itself
+    /// once there, which differs when its app rounds or caps the size. That is how a second Left
+    /// or Right Half knows the window is still in that half when it never fills the tile exactly.
+    /// Dropped with `originals` when the window's process quits.
     private var placements: [WindowIdentity: Placement] = [:]
     private let displays: () -> [Display]
 
     private struct Placement {
-        let tile: Tile
-        let frame: CGRect
+        let target: CGRect
+        let landed: CGRect
     }
 
     init(displays: @escaping () -> [Display] = { Display.all }) {
@@ -120,22 +121,29 @@ final class WindowDirector {
     }
 
     /// Lays `tile` into `display`, then records where the window actually ended up, so that
-    /// pressing the same tile again can tell the window has not moved since.
+    /// pressing the same tile again can tell the window has not moved since. Recorded only once
+    /// the window's top-left corner is where it was sent: an app that rounds or caps a size keeps
+    /// that corner, while one still reporting its old frame has not moved yet.
     private func place(_ window: some MovableWindow, in tile: Tile, on display: Display, remembering previous: CGRect) -> CommandOutcome {
-        let outcome = apply(tile.frame(in: display.visibleFrame), to: window, remembering: previous)
+        let target = tile.frame(in: display.visibleFrame)
+        let outcome = apply(target, to: window, remembering: previous)
         if outcome == .moved, let key = window.identity {
-            placements[key] = window.cocoaFrame.map { Placement(tile: tile, frame: $0) }
+            let landed = window.cocoaFrame.flatMap { $0.sharesTopLeft(with: target) ? $0 : nil }
+            placements[key] = landed.map { Placement(target: target, landed: $0) }
         }
         return outcome
     }
 
-    /// Whether `window` is already in `tile`: it fills the tile, or it is where Loadstone last
-    /// put it with that tile. The second covers apps that never fill a tile exactly, rounding to
-    /// a character grid (Terminal, iTerm2) or holding a minimum or fixed width.
+    /// Whether `window` is already in `tile`: it fills the tile, or it is where it landed the last
+    /// time Loadstone sent it to this same frame. The second covers apps that never fill a tile
+    /// exactly, rounding to a character grid (Terminal, iTerm2) or holding a minimum or fixed
+    /// width. A display change (a new resolution, the Dock moving) changes the tile's frame, so
+    /// the window is refitted before it is carried on.
     private func isPlaced(_ window: some MovableWindow, in tile: Tile, on display: Display, current: CGRect) -> Bool {
-        if current.isWithinAPoint(of: tile.frame(in: display.visibleFrame)) { return true }
+        let target = tile.frame(in: display.visibleFrame)
+        if current.isWithinAPoint(of: target) { return true }
         guard let key = window.identity, let last = placements[key] else { return false }
-        return last.tile == tile && current.isWithinAPoint(of: last.frame)
+        return last.target.isWithinAPoint(of: target) && current.isWithinAPoint(of: last.landed)
     }
 
     /// Writes `frame`, then records `previous` as the frame Restore should return to — but only
@@ -190,5 +198,10 @@ private extension CGRect {
     func isWithinAPoint(of other: CGRect) -> Bool {
         abs(minX - other.minX) <= 1 && abs(maxX - other.maxX) <= 1
             && abs(minY - other.minY) <= 1 && abs(maxY - other.maxY) <= 1
+    }
+
+    /// Top-left corners within a point of each other. Cocoa space, so the top is `maxY`.
+    func sharesTopLeft(with other: CGRect) -> Bool {
+        abs(minX - other.minX) <= 1 && abs(maxY - other.maxY) <= 1
     }
 }

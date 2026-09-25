@@ -304,7 +304,6 @@ final class WindowDirectorTests: XCTestCase {
     }
 
     func testAWindowStillReportingItsOldFrameIsNotRememberedAsPlaced() {
-        XCTExpectFailure("Placements record a frame the window has not moved to until the next commit")
         // Read straight back, the frame is still the old one. Restore later returns the window to
         // exactly that frame, where a remembered placement would throw it onto the next display.
         let window = FakeWindow(frame: floating)
@@ -320,7 +319,6 @@ final class WindowDirectorTests: XCTestCase {
     }
 
     func testAHalfWhoseDisplayHasChangedSinceIsRefittedRatherThanCarriedOn() {
-        XCTExpectFailure("Placements outlive a change to the display until the next commit")
         // A new resolution leaves the window where it was, which is no longer the left half.
         var desk = [primary, right]
         let director = WindowDirector(displays: { desk })

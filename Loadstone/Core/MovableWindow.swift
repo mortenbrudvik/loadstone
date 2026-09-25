@@ -1,6 +1,7 @@
 import ApplicationServices
 
-/// How `WindowDirector` recognises a window across commands, so Restore can find its memory.
+/// How `WindowDirector` recognises a window across commands, so Restore and a repeated half can
+/// find what it remembers about it.
 enum WindowIdentity: Hashable, Sendable {
     /// Stable for the window's lifetime. macOS reuses ids after a window closes, which is why
     /// the director drops entries when their process quits.
