@@ -9,7 +9,7 @@ enum WindowIdentity: Hashable, Sendable {
     /// Weaker fallback when the window id is unavailable: titles change (browser tabs, "edited"
     /// markers), which orphans the memory. A title that follows the window's size, as
     /// Terminal's does, changes with every resize, so the director reads the identity again
-    /// after each write the window accepts and records under the new title.
+    /// after each write the window accepts and records under the title it reads then.
     case fallback(pid: pid_t, title: String)
 
     var pid: pid_t {

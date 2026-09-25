@@ -168,8 +168,11 @@ final class WindowDirector {
     /// that applies the frame late. If the window's old frame already shared the target's
     /// top-left, that old frame is recorded as where it landed. Once Loadstone writes the window
     /// again the entry goes, but put back on exactly that frame by anything else (a title-bar
-    /// double-click, a drag), the window is carried on at the next press. And a window carried on
-    /// to another display reads back its old frame, off the target's top-left, so the move goes
+    /// double-click, a drag), the window is carried on at the next press. A window known by a
+    /// title that follows its size is carried on even when a Loadstone tile put it back: the
+    /// title read after the write is stale as well, so the entry sits under the old title, which
+    /// the next write, looked up by the new one, does not drop. And a window carried on to
+    /// another display reads back its old frame, off the target's top-left, so the move goes
     /// unrecorded. A window held wider than its tile keeps its top-left and sticks out to the
     /// right, so one carried left onto a display narrower than itself reaches back over the
     /// display it came from, with its centre there; its next Left Half goes by that display, and
