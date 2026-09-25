@@ -29,7 +29,7 @@ Loadstone sits in the menu bar and stays out of the way. When you need two docs 
 - **Thirds** — left, center, right, plus two-thirds
 - **Maximize, center, restore** — restore puts the window back where it was before Loadstone first moved it
 - **Drag to snap** — edges for halves, corners for quarters, top to maximize, bottom for thirds. Only a window that is actually being dragged snaps; selecting text or dragging a slider near an edge does nothing
-- **Multi-display** — send a window to the next or previous screen, walking displays left to right as they sit on the desk
+- **Multi-display** — press left or right half again and the window carries on into the screen beside it, one half at a time; or send it to the next or previous screen, walking displays left to right as they sit on the desk
 - **Custom shortcuts** — Magnet-style defaults, all editable
 - **Launch at login** — optional, from Settings
 - **Portrait screens** — the side edges split three ways along their length (corner, vertical third, corner); the bottom edge gives halves
@@ -58,6 +58,8 @@ The corner keys are a square on the keyboard:
 U  I
 J  K
 ```
+
+Press `⌃⌥←` again on a window that is already in the left half and it moves on to the right half of the screen to its left, so repeated presses walk it across your screens one half at a time. `⌃⌥→` does the same to the right. At the outer edge of the desk the window stays put, and a screen above or below does not count.
 
 ## Drag to snap
 
@@ -149,6 +151,8 @@ Menu bar → Loadstone → **Loadstone Help** opens this page.
 **Restore does nothing.** Restore is one-shot: it puts the window back where it was before Loadstone first moved it, then forgets. The next Loadstone command starts a new memory. The memory is also dropped when the window’s app quits or Loadstone restarts.
 
 **Next / previous display beeps.** Only one display is attached.
+
+**Pressing `⌃⌥←` again does not move the window to the next screen.** Only a screen to the side counts, as arranged in System Settings → Displays; one above or below does not. And the window has to be in that half already: if you have moved it since, the first press puts it back into the half.
 
 **macOS’s own edge tiling is off after Loadstone crashed or was force-quit.** Loadstone turns it off while running and back on when it quits normally; after an unclean exit, simply launching Loadstone again restores it. To put it back by hand, use System Settings → **Desktop & Dock** → **Windows**.
 
