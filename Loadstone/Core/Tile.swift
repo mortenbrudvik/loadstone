@@ -39,10 +39,12 @@ enum Tile: String, CaseIterable, Sendable {
 }
 
 /// Everything a user can ask Loadstone to do to a window. This is the single source of truth
-/// for the hotkey list, the status-bar menu, and the Shortcuts settings pane: adding a case
-/// (or a `Tile`) fails to compile until `id`, `title`, `defaultShortcut`, and `section` cover
-/// it (for a `Tile`, `frame(in:)` and `continuation` too), and then it appears everywhere
-/// automatically.
+/// for the hotkey list, the status-bar menu, and the Shortcuts settings pane. Adding a `Tile`
+/// fails to compile until `title`, `defaultShortcut`, `section`, `frame(in:)`, and
+/// `continuation` cover it, and then it appears everywhere. A new case here also needs `id` and
+/// a branch in `WindowDirector.perform`, which the compiler asks for, and an entry in `all`,
+/// which it does not: left out of `all`, a command compiles and never reaches the menu, the
+/// hotkeys, or the settings pane.
 enum WindowCommand: Hashable, Sendable {
     case tile(Tile)
     case center

@@ -140,9 +140,9 @@ final class WindowDirector {
 
     /// Moves the window `delta` displays along from the one under its centre, mapping its frame
     /// proportionally. The display Loadstone put it on differs from that one only for a window
-    /// held wider than its tile and mostly past that display's edge. Mapped from there, the
-    /// window would keep that overhang in proportion and grow on the way when that display is
-    /// the narrower, which can leave most of it off the desk.
+    /// held wider or taller than its tile and mostly past that display's edge. Mapped from there,
+    /// the window would keep that overhang in proportion: one wider than that display would come
+    /// out wider than the display it goes to, which can leave most of it off the desk.
     private func move(_ window: some MovableWindow, key: WindowIdentity?, current: CGRect, delta: Int, in displays: [Display]) -> CommandOutcome {
         guard let display = display(under: current, in: displays),
               let neighbor = ScreenGeometry.neighbor(of: display, delta: delta, in: displays) else { return .noDisplay }
@@ -163,10 +163,11 @@ final class WindowDirector {
     /// again the entry goes, but put back on exactly that frame by anything else (a title-bar
     /// double-click, a drag), the window is carried on at the next press. And a window carried on
     /// to another display reads back its old frame, off the target's top-left, so the move goes
-    /// unrecorded; one held wider than that display then has its next half go by the display
-    /// under its centre, which is the one it came from, and it bounces between the two. Closing
-    /// either would take watching the window, with an AXObserver recording where it settles and
-    /// dropping the entry when it moves anywhere else.
+    /// unrecorded. A window held wider than its tile keeps its top-left and sticks out to the
+    /// right, so one carried left onto a display narrower than itself reaches back over the
+    /// display it came from, with its centre there; its next Left Half goes by that display, and
+    /// it bounces between the two. Closing either would take watching the window, with an
+    /// AXObserver recording where it settles and dropping the entry when it moves anywhere else.
     ///
     /// Returns the outcome and, when a placement was recorded, where the window landed.
     private func place(_ window: some MovableWindow, key: WindowIdentity?, at target: CGRect, by tile: Tile, from current: CGRect) -> (outcome: CommandOutcome, landed: CGRect?) {
@@ -220,18 +221,20 @@ final class WindowDirector {
         return placed.outcome
     }
 
-    /// Writes `frame` to the window at `current`, then records `previous` as the frame Restore
-    /// should return to and drops the window's placement — but only once the window has accepted
-    /// the write. Recording afterwards rather than before is what keeps a refused frame, or a
-    /// command that never ran at all, from leaving behind a restore entry that a later Restore
-    /// would act on.
+    /// Writes `frame` to the window at `current` and, once the window has accepted the write,
+    /// records `previous` as the frame Restore should return to and drops the window's placement.
+    /// A refused write records nothing, and keeps the placement only if the window is seen to
+    /// have stayed put (below). Recording afterwards rather than before is what keeps a refused
+    /// frame, or a command that never ran at all, from leaving behind a restore entry that a
+    /// later Restore would act on.
     ///
     /// The placement said where a tile left the window, which has now been sent somewhere else;
     /// for a tile, `place` records a fresh one. After any other write, a step-sized or
     /// minimum-width window brought back to where it landed (a Next then Previous Display round
     /// trip, say) takes one refit press before it carries on. That is the price of never
-    /// carrying a window on from a stale record, such as the old frame an app that applies
-    /// frames late reads back, which Restore returns the window to.
+    /// carrying a window on from a record that another Loadstone write has made stale, such as
+    /// the old frame an app that applies frames late reads back, which Restore returns the
+    /// window to.
     ///
     /// A refused write keeps the placement while the window is still at `current`. Part of the
     /// write can take before the refusal, though: AXWindow sets the size before the position, so
