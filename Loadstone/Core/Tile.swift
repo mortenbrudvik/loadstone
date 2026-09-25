@@ -185,6 +185,11 @@ extension Tile {
     }
 }
 
+/// A side of a display, and so a direction across the desk.
+enum Side: Sendable {
+    case left, right
+}
+
 enum SnapZones {
     /// Depth of the edge bands, and how far past an outer edge the pointer may overshoot.
     static let edgeThickness: CGFloat = 16
@@ -236,8 +241,6 @@ enum SnapZones {
         if nearBottom { return thirdAlongWidth(x, frame: f) }
         return nil
     }
-
-    private enum Side { case left, right }
 
     private static func thirdAlongWidth(_ x: CGFloat, frame: CGRect) -> Tile {
         let t = (x - frame.minX) / max(frame.width, 1)

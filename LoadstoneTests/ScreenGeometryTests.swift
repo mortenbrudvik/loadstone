@@ -107,4 +107,62 @@ final class ScreenGeometryTests: XCTestCase {
         XCTAssertEqual(ScreenGeometry.neighbor(of: above, delta: 1, in: appKitOrder), below)
         XCTAssertEqual(ScreenGeometry.neighbor(of: below, delta: 1, in: appKitOrder), left)
     }
+
+    // MARK: Adjacent
+
+    /// A display whose visible frame is its whole frame: adjacency only reads the arrangement.
+    private func display(x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat) -> Display {
+        let frame = CGRect(x: x, y: y, width: width, height: height)
+        return Display(frame: frame, visibleFrame: frame)
+    }
+
+    func testAdjacentIsTheDisplayOnThatSide() {
+        XCTExpectFailure("ScreenGeometry.adjacent is a stub until the next commit")
+        XCTAssertEqual(ScreenGeometry.adjacent(to: primary, toward: .left, in: displays), left)
+        XCTAssertEqual(ScreenGeometry.adjacent(to: primary, toward: .right, in: displays), right)
+    }
+
+    func testAdjacentIsTheNearestDisplayOnThatSide() {
+        XCTExpectFailure("ScreenGeometry.adjacent is a stub until the next commit")
+        XCTAssertEqual(ScreenGeometry.adjacent(to: right, toward: .left, in: displays), primary)
+    }
+
+    func testAdjacentStopsAtTheEdgeOfTheDeskInsteadOfWrapping() {
+        XCTAssertNil(ScreenGeometry.adjacent(to: left, toward: .left, in: displays))
+        XCTAssertNil(ScreenGeometry.adjacent(to: right, toward: .right, in: displays))
+    }
+
+    func testADisplayAboveOrBelowIsNotAdjacent() {
+        // A laptop under a monitor. Reading order puts the monitor just before the laptop, which
+        // suits Previous Display but would send a move to the left up onto the monitor.
+        let monitor = display(x: 0, y: 0, width: 2560, height: 1440)
+        let laptop = display(x: 524, y: -982, width: 1512, height: 982)
+        let desk = [monitor, laptop]
+        XCTAssertNil(ScreenGeometry.adjacent(to: laptop, toward: .left, in: desk))
+        XCTAssertNil(ScreenGeometry.adjacent(to: laptop, toward: .right, in: desk))
+        XCTAssertNil(ScreenGeometry.adjacent(to: monitor, toward: .left, in: desk))
+    }
+
+    func testADisplayTouchingOnlyAtACornerIsNotAdjacent() {
+        let corner = display(x: -1440, y: -900, width: 1440, height: 900)
+        XCTAssertNil(ScreenGeometry.adjacent(to: primary, toward: .left, in: [primary, corner]))
+    }
+
+    func testOfAStackedPairTheDisplaySharingMoreHeightIsAdjacent() {
+        XCTExpectFailure("ScreenGeometry.adjacent is a stub until the next commit")
+        let upper = display(x: -1920, y: 700, width: 1920, height: 1080)   // shares 380pt of the primary's height
+        let lower = display(x: -1920, y: -380, width: 1920, height: 1080)  // shares 700pt
+        XCTAssertEqual(ScreenGeometry.adjacent(to: primary, toward: .left, in: [primary, upper, lower]), lower)
+        XCTAssertEqual(ScreenGeometry.adjacent(to: primary, toward: .left, in: [primary, lower, upper]), lower)
+    }
+
+    func testAStackedPairSharingEqualHeightResolvesTheSameInAnyListOrder() {
+        XCTExpectFailure("ScreenGeometry.adjacent is a stub until the next commit")
+        let upper = display(x: -1920, y: 540, width: 1920, height: 1080)
+        let lower = display(x: -1920, y: -540, width: 1920, height: 1080)
+        let one = ScreenGeometry.adjacent(to: primary, toward: .left, in: [primary, upper, lower])
+        let other = ScreenGeometry.adjacent(to: primary, toward: .left, in: [primary, lower, upper])
+        XCTAssertNotNil(one)
+        XCTAssertEqual(one, other)
+    }
 }

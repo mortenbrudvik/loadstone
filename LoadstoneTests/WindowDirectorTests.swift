@@ -9,6 +9,9 @@ final class WindowDirectorTests: XCTestCase {
         var cocoaFrame: CGRect?
         var writes: [CGRect] = []
         var rejectWith: AXError?
+        /// Set to act like Terminal or iTerm2, which round a window's size down to whole character
+        /// cells and keep its top-left corner, so it never fills a tile exactly.
+        var grid: CGSize?
 
         init(frame: CGRect, identity: WindowIdentity? = .cgWindow(1, pid: 42)) {
             cocoaFrame = frame
@@ -19,7 +22,13 @@ final class WindowDirectorTests: XCTestCase {
         func setCocoaFrame(_ frame: CGRect) -> AXError {
             if let rejectWith { return rejectWith }
             writes.append(frame)
-            cocoaFrame = frame
+            if let grid {
+                let width = (frame.width / grid.width).rounded(.down) * grid.width
+                let height = (frame.height / grid.height).rounded(.down) * grid.height
+                cocoaFrame = CGRect(x: frame.minX, y: frame.maxY - height, width: width, height: height)
+            } else {
+                cocoaFrame = frame
+            }
             return .success
         }
     }
@@ -32,7 +41,15 @@ final class WindowDirectorTests: XCTestCase {
         frame: CGRect(x: 1920, y: -300, width: 2560, height: 1440),
         visibleFrame: CGRect(x: 1920, y: -300, width: 2560, height: 1415)
     )
+    private let left = Display(
+        frame: CGRect(x: -1440, y: 0, width: 1440, height: 900),
+        visibleFrame: CGRect(x: -1440, y: 0, width: 1440, height: 875)
+    )
     private let original = CGRect(x: 100, y: 100, width: 800, height: 600)
+    /// On the right-hand display and in no tile.
+    private let floating = CGRect(x: 2200, y: 100, width: 800, height: 600)
+    /// A Terminal character cell. No half's width or height here is a whole number of them.
+    private let terminalCell = CGSize(width: 7, height: 17)
 
     private func makeDirector() -> WindowDirector {
         WindowDirector(displays: { [self.primary, self.right] })
@@ -173,5 +190,109 @@ final class WindowDirectorTests: XCTestCase {
 
         XCTAssertEqual(director.perform(.restore, on: window), .nothingToRestore,
                        "nothing moved, so there is nothing to restore to")
+    }
+
+    // MARK: Continuing across displays
+
+    func testLeftHalfOnAWindowAlreadyThereContinuesToTheRightHalfOfTheDisplayToTheLeft() {
+        XCTExpectFailure("Left and Right Half do not continue across displays until the next commit")
+        let window = FakeWindow(frame: Tile.leftHalf.frame(in: right.visibleFrame))
+        XCTAssertEqual(makeDirector().perform(.tile(.leftHalf), on: window), .moved)
+        XCTAssertEqual(window.cocoaFrame, Tile.rightHalf.frame(in: primary.visibleFrame))
+    }
+
+    func testRightHalfOnAWindowAlreadyThereContinuesToTheLeftHalfOfTheDisplayToTheRight() {
+        XCTExpectFailure("Left and Right Half do not continue across displays until the next commit")
+        let window = FakeWindow(frame: Tile.rightHalf.frame(in: primary.visibleFrame))
+        makeDirector().perform(.tile(.rightHalf), on: window)
+        XCTAssertEqual(window.cocoaFrame, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testAWindowNotInTheHalfYetSnapsOnItsOwnDisplayFirst() {
+        let window = FakeWindow(frame: floating)
+        makeDirector().perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.cocoaFrame, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testAtTheEdgeOfTheDeskAHalfStaysWhereItIs() {
+        let window = FakeWindow(frame: Tile.leftHalf.frame(in: primary.visibleFrame))
+        XCTAssertEqual(makeDirector().perform(.tile(.leftHalf), on: window), .moved)
+        XCTAssertEqual(window.cocoaFrame, Tile.leftHalf.frame(in: primary.visibleFrame))
+    }
+
+    func testRepeatedLeftHalfWalksAWindowAcrossTheDeskOneHalfAtATime() {
+        XCTExpectFailure("Left and Right Half do not continue across displays until the next commit")
+        // The window never fills a half, so each step has to be recognised from where Loadstone
+        // last put it, and each step has to record the half it actually landed in.
+        let window = FakeWindow(frame: floating)
+        window.grid = terminalCell
+        let director = WindowDirector(displays: { [self.primary, self.right, self.left] })
+
+        for _ in 0..<5 { director.perform(.tile(.leftHalf), on: window) }
+
+        XCTAssertEqual(window.writes, [
+            Tile.leftHalf.frame(in: right.visibleFrame),
+            Tile.rightHalf.frame(in: primary.visibleFrame),
+            Tile.leftHalf.frame(in: primary.visibleFrame),
+            Tile.rightHalf.frame(in: left.visibleFrame),
+            Tile.leftHalf.frame(in: left.visibleFrame),
+        ])
+    }
+
+    func testAWindowMovedSinceItWasPlacedGoesBackIntoTheHalfInsteadOfContinuing() {
+        let window = FakeWindow(frame: floating)
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+        window.cocoaFrame = floating  // dragged back out by hand
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.cocoaFrame, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testRestoreUndoesAContinuation() {
+        let window = FakeWindow(frame: Tile.leftHalf.frame(in: right.visibleFrame))
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+
+        XCTAssertEqual(director.perform(.restore, on: window), .moved)
+        XCTAssertEqual(window.cocoaFrame, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testAHalfReachedByDraggingContinuesToo() {
+        XCTExpectFailure("Left and Right Half do not continue across displays until the next commit")
+        let window = FakeWindow(frame: floating)
+        window.grid = terminalCell
+        let director = makeDirector()
+        director.snap(.leftHalf, window: window, on: right)
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.rightHalf.frame(in: primary.visibleFrame))
+    }
+
+    func testAHalfCarriedOverByNextDisplayStillCountsAsThatHalf() {
+        XCTExpectFailure("Left and Right Half do not continue across displays until the next commit")
+        let odd = Display(
+            frame: CGRect(x: 1920, y: 0, width: 1201, height: 901),
+            visibleFrame: CGRect(x: 1920, y: 0, width: 1201, height: 876)
+        )
+        let window = FakeWindow(frame: Tile.leftHalf.frame(in: primary.visibleFrame))
+        let director = WindowDirector(displays: { [self.primary, odd] })
+        director.perform(.nextDisplay, on: window)
+        XCTAssertEqual(window.cocoaFrame?.width, 600.5, "Next Display maps proportionally, leaving it half a point wider than the tile")
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.cocoaFrame, Tile.rightHalf.frame(in: primary.visibleFrame))
+    }
+
+    func testForgettingAProcessDropsWhereItsWindowsWerePut() {
+        let window = FakeWindow(frame: floating)
+        window.grid = terminalCell
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+
+        director.forgetWindows(ofProcess: 42)
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
     }
 }
