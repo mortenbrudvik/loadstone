@@ -28,9 +28,9 @@ final class WindowDirector {
     /// The tile frame Loadstone last sent each window to, and where the window reported itself
     /// once there, which differs when its app rounds or caps the size. That is how a second Left
     /// or Right Half knows the window is still in that half when it never fills the tile exactly.
-    /// It also decides which display a window still sitting where it landed is on. The next tile
-    /// replaces the entry; Restore, Center and a display move drop it, and so does the window's
-    /// process quitting, along with `originals`.
+    /// It also decides which display a window still sitting where it landed is on. Every frame
+    /// the window accepts from Loadstone drops the entry, and a tile then records a new one; the
+    /// window's process quitting drops it too, along with `originals`.
     private var placements: [WindowIdentity: Placement] = [:]
     private let displays: () -> [Display]
 
@@ -93,7 +93,7 @@ final class WindowDirector {
             return place(window, key: key, at: target, remembering: current, for: command)
         case .center:
             guard let display = display(for: current, key: key, in: displays) else { return .noDisplay }
-            return relocate(window, key: key, to: Layout.centered(current, in: display.visibleFrame), remembering: current)
+            return apply(Layout.centered(current, in: display.visibleFrame), to: window, key: key, remembering: current)
         case .restore:
             // Restore must not record: it would store the current frame and then "restore" to it.
             // The memory is dropped only once the window has actually accepted the old frame, so
@@ -101,7 +101,7 @@ final class WindowDirector {
             guard let key, let original = originals[key] else {
                 return .nothingToRestore
             }
-            let outcome = relocate(window, key: key, to: original, remembering: nil)
+            let outcome = apply(original, to: window, key: key, remembering: nil)
             if outcome == .moved { originals.removeValue(forKey: key) }
             return outcome
         case .nextDisplay:
@@ -130,24 +130,14 @@ final class WindowDirector {
               let neighbor = ScreenGeometry.neighbor(of: display, delta: delta, in: displays) else { return .noDisplay }
         guard neighbor != display else { return .noOtherDisplay }
         let mapped = Layout.mapped(current, from: display.visibleFrame, to: neighbor.visibleFrame)
-        return relocate(window, key: key, to: mapped, remembering: current)
-    }
-
-    /// Writes a frame that is not a tile (Center, Restore, a display move) and, once the window
-    /// accepts it, drops the window's placement. The placement says where a tile put the window;
-    /// once Loadstone has moved it anywhere else it can only mislead, most of all when it holds
-    /// a stale read-back that the window can later be put back on.
-    private func relocate(_ window: some MovableWindow, key: WindowIdentity?, to frame: CGRect, remembering previous: CGRect?) -> CommandOutcome {
-        let outcome = apply(frame, to: window, key: key, remembering: previous)
-        if outcome == .moved, let key { placements.removeValue(forKey: key) }
-        return outcome
+        return apply(mapped, to: window, key: key, remembering: current)
     }
 
     /// Sends the window to `target`, a tile's frame, then records where it actually ended up, so
     /// that pressing the same tile again can tell the window has not moved since. Recorded only
     /// once the window's top-left corner is where it was sent: an app that rounds or caps a size
-    /// normally keeps that corner, while one still reporting its old frame has not moved yet. A
-    /// read-back that misses the corner drops any earlier entry rather than leaving it standing.
+    /// normally keeps that corner, while one still reporting its old frame has not moved yet, so
+    /// a read-back that misses the corner leaves the window with no entry.
     ///
     /// An app that applies the frame late, and whose old frame already shared the target's
     /// top-left, reads back that old frame and has it recorded. Once Loadstone moves the window
@@ -163,7 +153,6 @@ final class WindowDirector {
             placements[key] = Placement(target: target, landed: readBack)
         } else {
             Log.ax.info("\(command.id, privacy: .public): read back \(readBack.map(String.init(describing:)) ?? "no frame", privacy: .public), off the top-left of \(String(describing: target), privacy: .public), so the placement is not recorded")
-            placements.removeValue(forKey: key)
         }
         return outcome
     }
@@ -176,19 +165,27 @@ final class WindowDirector {
     /// refitted before it is carried on.
     private func isPlaced(_ current: CGRect, in target: CGRect, key: WindowIdentity?, for command: WindowCommand) -> Bool {
         if current.isWithinAPoint(of: target) { return true }
+        if standingPlacement(for: key, at: current)?.target.isWithinAPoint(of: target) == true { return true }
         guard let key, let last = placements[key] else { return false }
-        if last.target.isWithinAPoint(of: target) && current.isWithinAPoint(of: last.landed) { return true }
         Log.ax.info("\(command.id, privacy: .public): last placement does not match: the window is at \(String(describing: current), privacy: .public), was sent to \(String(describing: last.target), privacy: .public) and landed at \(String(describing: last.landed), privacy: .public); the tile is now \(String(describing: target), privacy: .public)")
         return false
     }
 
-    /// Writes `frame`, then records `previous` as the frame Restore should return to — but only
-    /// once the window has accepted the write. Recording afterwards rather than before is what
-    /// keeps a refused frame, or a command that never ran at all, from leaving behind a restore
-    /// entry that a later Restore would act on.
+    /// Writes `frame`, then records `previous` as the frame Restore should return to and drops
+    /// the window's placement — but only once the window has accepted the write. Recording
+    /// afterwards rather than before is what keeps a refused frame, or a command that never ran
+    /// at all, from leaving behind a restore entry that a later Restore would act on.
+    ///
+    /// The placement said where a tile left the window, which has now been sent somewhere else;
+    /// for a tile, `place` records a fresh one. After any other write, a step-sized or
+    /// minimum-width window brought back to where it landed (a Next then Previous Display round
+    /// trip, say) takes one refit press before it carries on. That is the price of never
+    /// carrying a window on from a stale record, such as the old frame an app that applies
+    /// frames late reads back, which Restore returns the window to.
     private func apply(_ frame: CGRect, to window: some MovableWindow, key: WindowIdentity?, remembering previous: CGRect?) -> CommandOutcome {
         let error = window.setCocoaFrame(frame)
         guard error == .success else { return .rejected(error) }
+        if let key { placements.removeValue(forKey: key) }
         if let previous { rememberIfNeeded(previous, for: key) }
         return .moved
     }
@@ -205,11 +202,18 @@ final class WindowDirector {
     /// display when the window is off every display (after a disconnect) so it can still be
     /// brought back.
     private func display(for frame: CGRect, key: WindowIdentity?, in displays: [Display]) -> Display? {
-        if let key, let last = placements[key], frame.isWithinAPoint(of: last.landed),
-           let placedOn = ScreenGeometry.display(containing: last.target, in: displays) {
+        if let placement = standingPlacement(for: key, at: frame),
+           let placedOn = ScreenGeometry.display(containing: placement.target, in: displays) {
             return placedOn
         }
         return ScreenGeometry.display(containing: frame, in: displays) ?? displays.first
+    }
+
+    /// The window's placement while the window at `frame` is still where it landed, to within a
+    /// point; nil once something has moved or resized it since.
+    private func standingPlacement(for key: WindowIdentity?, at frame: CGRect) -> Placement? {
+        guard let key, let placement = placements[key], frame.isWithinAPoint(of: placement.landed) else { return nil }
+        return placement
     }
 
     private func report(_ outcome: CommandOutcome, for command: WindowCommand, pid: pid_t?) {
