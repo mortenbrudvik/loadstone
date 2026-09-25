@@ -86,14 +86,14 @@ final class WindowDirector {
                 if let beside = ScreenGeometry.adjacent(to: display, toward: continuation.toward, in: displays) {
                     Log.ax.info("\(command.id, privacy: .public): carrying on to the display at \(String(describing: beside.frame), privacy: .public)")
                     let landing = continuation.landing.frame(in: beside.visibleFrame)
-                    return place(window, key: key, at: landing, remembering: current, for: command)
+                    return place(window, key: key, at: landing, from: current, for: command)
                 }
                 Log.ax.info("\(command.id, privacy: .public): in the half, with no display to the \(String(describing: continuation.toward), privacy: .public) of \(String(describing: display.frame), privacy: .public)")
             }
-            return place(window, key: key, at: target, remembering: current, for: command)
+            return place(window, key: key, at: target, from: current, for: command)
         case .center:
             guard let display = display(for: current, key: key, in: displays) else { return .noDisplay }
-            return apply(Layout.centered(current, in: display.visibleFrame), to: window, key: key, remembering: current)
+            return apply(Layout.centered(current, in: display.visibleFrame), to: window, key: key, from: current, remembering: current)
         case .restore:
             // Restore must not record: it would store the current frame and then "restore" to it.
             // The memory is dropped only once the window has actually accepted the old frame, so
@@ -101,7 +101,7 @@ final class WindowDirector {
             guard let key, let original = originals[key] else {
                 return .nothingToRestore
             }
-            let outcome = apply(original, to: window, key: key, remembering: nil)
+            let outcome = apply(original, to: window, key: key, from: current, remembering: nil)
             if outcome == .moved { originals.removeValue(forKey: key) }
             return outcome
         case .nextDisplay:
@@ -116,7 +116,7 @@ final class WindowDirector {
     @discardableResult
     func snap(_ tile: Tile, window: some MovableWindow, on display: Display) -> CommandOutcome {
         guard let current = window.cocoaFrame else { return .frameUnreadable }
-        return place(window, key: window.identity, at: tile.frame(in: display.visibleFrame), remembering: current, for: .tile(tile))
+        return place(window, key: window.identity, at: tile.frame(in: display.visibleFrame), from: current, for: .tile(tile))
     }
 
     /// Drops everything remembered about the windows of a process that has quit.
@@ -130,7 +130,7 @@ final class WindowDirector {
               let neighbor = ScreenGeometry.neighbor(of: display, delta: delta, in: displays) else { return .noDisplay }
         guard neighbor != display else { return .noOtherDisplay }
         let mapped = Layout.mapped(current, from: display.visibleFrame, to: neighbor.visibleFrame)
-        return apply(mapped, to: window, key: key, remembering: current)
+        return apply(mapped, to: window, key: key, from: current, remembering: current)
     }
 
     /// Sends the window to `target`, a tile's frame, then records where it actually ended up, so
@@ -145,8 +145,8 @@ final class WindowDirector {
     /// double-click, a drag), the window is carried on at the next press. Closing that would
     /// take watching the window, with an AXObserver dropping the entry when it moves anywhere
     /// but its landing.
-    private func place(_ window: some MovableWindow, key: WindowIdentity?, at target: CGRect, remembering previous: CGRect, for command: WindowCommand) -> CommandOutcome {
-        let outcome = apply(target, to: window, key: key, remembering: previous)
+    private func place(_ window: some MovableWindow, key: WindowIdentity?, at target: CGRect, from current: CGRect, for command: WindowCommand) -> CommandOutcome {
+        let outcome = apply(target, to: window, key: key, from: current, remembering: current)
         guard outcome == .moved, let key else { return outcome }
         let readBack = window.cocoaFrame
         if let readBack, readBack.sharesTopLeft(with: target) {
@@ -171,10 +171,11 @@ final class WindowDirector {
         return false
     }
 
-    /// Writes `frame`, then records `previous` as the frame Restore should return to and drops
-    /// the window's placement — but only once the window has accepted the write. Recording
-    /// afterwards rather than before is what keeps a refused frame, or a command that never ran
-    /// at all, from leaving behind a restore entry that a later Restore would act on.
+    /// Writes `frame` to the window at `current`, then records `previous` as the frame Restore
+    /// should return to and drops the window's placement — but only once the window has accepted
+    /// the write. Recording afterwards rather than before is what keeps a refused frame, or a
+    /// command that never ran at all, from leaving behind a restore entry that a later Restore
+    /// would act on.
     ///
     /// The placement said where a tile left the window, which has now been sent somewhere else;
     /// for a tile, `place` records a fresh one. After any other write, a step-sized or
@@ -182,9 +183,21 @@ final class WindowDirector {
     /// trip, say) takes one refit press before it carries on. That is the price of never
     /// carrying a window on from a stale record, such as the old frame an app that applies
     /// frames late reads back, which Restore returns the window to.
-    private func apply(_ frame: CGRect, to window: some MovableWindow, key: WindowIdentity?, remembering previous: CGRect?) -> CommandOutcome {
+    ///
+    /// A refused write keeps the placement while the window is still at `current`. Part of the
+    /// write can take before the refusal, though: AXWindow sets the size before the position, so
+    /// an app that takes the size and then refuses the position, or times out on it, leaves the
+    /// window resized at its old top-left, which can be exactly a stale frame recorded as where
+    /// it landed. So a refusal reads the frame again and drops the placement unless the window is
+    /// still within a point of `current`.
+    private func apply(_ frame: CGRect, to window: some MovableWindow, key: WindowIdentity?, from current: CGRect, remembering previous: CGRect?) -> CommandOutcome {
         let error = window.setCocoaFrame(frame)
-        guard error == .success else { return .rejected(error) }
+        guard error == .success else {
+            if let key, placements[key] != nil, window.cocoaFrame?.isWithinAPoint(of: current) != true {
+                placements.removeValue(forKey: key)
+            }
+            return .rejected(error)
+        }
         if let key { placements.removeValue(forKey: key) }
         if let previous { rememberIfNeeded(previous, for: key) }
         return .moved

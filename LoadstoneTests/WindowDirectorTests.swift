@@ -18,6 +18,10 @@ final class WindowDirectorTests: XCTestCase {
         /// Set to act like an app that applies a frame only after the write has returned, so the
         /// frame read straight back is still the old one. `catchUp()` applies it.
         var appliesLate = false
+        /// Set to act like AXWindow writing to an app that takes the size and then refuses the
+        /// position, or times out on it: the window has the new size at its old top-left corner,
+        /// and the write fails with this error.
+        var refusesPositionWith: AXError?
         private var pending: CGRect?
 
         init(frame: CGRect, identity: WindowIdentity? = .cgWindow(1, pid: 42)) {
@@ -29,6 +33,10 @@ final class WindowDirectorTests: XCTestCase {
         func setCocoaFrame(_ frame: CGRect) -> AXError {
             if let rejectWith { return rejectWith }
             writes.append(frame)
+            if let refusesPositionWith, let old = cocoaFrame {
+                cocoaFrame = CGRect(x: old.minX, y: old.maxY - frame.height, width: frame.width, height: frame.height)
+                return refusesPositionWith
+            }
             var landed = frame
             if let grid {
                 let width = (frame.width / grid.width).rounded(.down) * grid.width
@@ -528,6 +536,24 @@ final class WindowDirectorTests: XCTestCase {
         director.perform(.tile(.rightHalf), on: window)
         window.catchUp()
         window.cocoaFrame = flushTopLeft  // dragged back by hand
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
+    func testARefusedWriteThatStillResizedTheWindowForgetsWhereAHalfPutIt() {
+        // Top Left's size takes and its position is refused, which leaves the window in the top-left
+        // quadrant: back on the old frame Left Half read back, without being moved by hand.
+        let topLeft = Tile.topLeft.frame(in: right.visibleFrame)
+        let window = FakeWindow(frame: topLeft)
+        window.appliesLate = true
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+        window.catchUp()
+        window.appliesLate = false
+        window.refusesPositionWith = .cannotComplete
+        XCTAssertEqual(director.perform(.tile(.topLeft), on: window), .rejected(.cannotComplete))
+        window.refusesPositionWith = nil
 
         director.perform(.tile(.leftHalf), on: window)
         XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
