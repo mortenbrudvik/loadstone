@@ -548,6 +548,34 @@ final class WindowDirectorTests: XCTestCase {
         return (window, director, narrow, wide)
     }
 
+    func testAHalfWhoseDisplayHasChangedSinceIsRefittedRatherThanCarriedOn() {
+        // A new resolution leaves the window where it was, which is no longer the left half.
+        var desk = [primary, right]
+        let director = WindowDirector(displays: { desk })
+        let window = FakeWindow(frame: floating)
+        director.perform(.tile(.leftHalf), on: window)
+        let roomier = Display(
+            frame: CGRect(x: 1920, y: -300, width: 3008, height: 1692),
+            visibleFrame: CGRect(x: 1920, y: -300, width: 3008, height: 1667)
+        )
+        desk = [primary, roomier]
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.cocoaFrame, Tile.leftHalf.frame(in: roomier.visibleFrame))
+    }
+
+    func testForgettingAProcessDropsWhereItsWindowsWerePut() {
+        let window = FakeWindow(frame: floating)
+        window.grid = terminalCell
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+
+        director.forgetWindows(ofProcess: 42)
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
+    }
+
     func testARefusedHalfIsNotRememberedAsPlaced() {
         // The refused window stays where it was, which shares the half's top-left, so only the
         // refusal itself keeps that frame from being recorded as where the half left it.
@@ -591,6 +619,24 @@ final class WindowDirectorTests: XCTestCase {
             director.perform(.tile(.leftHalf), on: window)
             XCTAssertEqual(window.writes.last, Tile.rightHalf.frame(in: primary.visibleFrame), "\(command)")
         }
+    }
+
+    func testARefusedWriteThatLeftTheFrameUnreadableForgetsWhereAHalfPutIt() throws {
+        // A hung app refuses Center and does not answer the read after it either, so nothing
+        // shows that the window is still where the half left it.
+        let window = FakeWindow(frame: floating)
+        window.grid = terminalCell
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+        let landed = try XCTUnwrap(window.cocoaFrame)
+        window.rejectWith = .cannotComplete
+        window.unreadableOnceRefused = true
+        XCTAssertEqual(director.perform(.center, on: window), .rejected(.cannotComplete))
+        window.rejectWith = nil
+        window.cocoaFrame = landed  // answering again, and still where it landed
+
+        director.perform(.tile(.leftHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
     }
 
     func testAWindowStillReportingItsOldFrameIsNotRememberedAsPlaced() {
@@ -719,52 +765,6 @@ final class WindowDirectorTests: XCTestCase {
         XCTAssertEqual(director.perform(.tile(.topRight), on: window), .rejected(.cannotComplete))
         XCTAssertEqual(window.cocoaFrame, topLeft)
         window.refusesPositionWith = nil
-
-        director.perform(.tile(.leftHalf), on: window)
-        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
-    }
-
-    func testARefusedWriteThatLeftTheFrameUnreadableForgetsWhereAHalfPutIt() throws {
-        // A hung app refuses Center and does not answer the read after it either, so nothing
-        // shows that the window is still where the half left it.
-        let window = FakeWindow(frame: floating)
-        window.grid = terminalCell
-        let director = makeDirector()
-        director.perform(.tile(.leftHalf), on: window)
-        let landed = try XCTUnwrap(window.cocoaFrame)
-        window.rejectWith = .cannotComplete
-        window.unreadableOnceRefused = true
-        XCTAssertEqual(director.perform(.center, on: window), .rejected(.cannotComplete))
-        window.rejectWith = nil
-        window.cocoaFrame = landed  // answering again, and still where it landed
-
-        director.perform(.tile(.leftHalf), on: window)
-        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
-    }
-
-    func testAHalfWhoseDisplayHasChangedSinceIsRefittedRatherThanCarriedOn() {
-        // A new resolution leaves the window where it was, which is no longer the left half.
-        var desk = [primary, right]
-        let director = WindowDirector(displays: { desk })
-        let window = FakeWindow(frame: floating)
-        director.perform(.tile(.leftHalf), on: window)
-        let roomier = Display(
-            frame: CGRect(x: 1920, y: -300, width: 3008, height: 1692),
-            visibleFrame: CGRect(x: 1920, y: -300, width: 3008, height: 1667)
-        )
-        desk = [primary, roomier]
-
-        director.perform(.tile(.leftHalf), on: window)
-        XCTAssertEqual(window.cocoaFrame, Tile.leftHalf.frame(in: roomier.visibleFrame))
-    }
-
-    func testForgettingAProcessDropsWhereItsWindowsWerePut() {
-        let window = FakeWindow(frame: floating)
-        window.grid = terminalCell
-        let director = makeDirector()
-        director.perform(.tile(.leftHalf), on: window)
-
-        director.forgetWindows(ofProcess: 42)
 
         director.perform(.tile(.leftHalf), on: window)
         XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: right.visibleFrame))
