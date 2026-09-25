@@ -678,8 +678,10 @@ final class WindowDirectorTests: XCTestCase {
     }
 
     func testARefusedWriteThatStillResizedTheWindowForgetsWhereAHalfPutIt() {
-        // Top Left's size takes and its position is refused, which leaves the window in the
-        // top-left quadrant: back on the old frame Left Half read back, with no hand move.
+        // Top Right is the size of Top Left here. Its size takes and its position is refused,
+        // which leaves the window in the top-left quadrant: back on the old frame Left Half read
+        // back, with no hand move, and not where Top Right sent it. What counts is that the
+        // window left where it was, not whether it reached the frame asked for.
         let topLeft = Tile.topLeft.frame(in: right.visibleFrame)
         let window = FakeWindow(frame: topLeft)
         window.appliesLate = true
@@ -688,7 +690,8 @@ final class WindowDirectorTests: XCTestCase {
         window.catchUp()
         window.appliesLate = false
         window.refusesPositionWith = .cannotComplete
-        XCTAssertEqual(director.perform(.tile(.topLeft), on: window), .rejected(.cannotComplete))
+        XCTAssertEqual(director.perform(.tile(.topRight), on: window), .rejected(.cannotComplete))
+        XCTAssertEqual(window.cocoaFrame, topLeft)
         window.refusesPositionWith = nil
 
         director.perform(.tile(.leftHalf), on: window)
