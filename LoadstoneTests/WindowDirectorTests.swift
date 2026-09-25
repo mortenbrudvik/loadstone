@@ -440,6 +440,27 @@ final class WindowDirectorTests: XCTestCase {
         XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: laptop.visibleFrame))
     }
 
+    func testATopRightThenRightHalfPulledToTheSameCornerStillCountsAsInTheHalf() throws {
+        // Top Right on the monitor leaves 780 of this window on the laptop too, so it is pulled
+        // down to the laptop's menu bar, and so is the Right Half that follows. Both land with
+        // the same top-left, one taller than the other: the top-left alone cannot tell the second
+        // landing from a window that never moved, but the whole frame can.
+        let window = FakeWindow(frame: CGRect(x: -1301, y: 100, width: 1501, height: 600))
+        window.minimumWidth = 1501
+        let desk = [laptop, monitor]
+        window.constrain = { Self.keptBelowTheMenuBar($0, among: desk) }
+        let director = WindowDirector(displays: { desk })
+        director.perform(.tile(.topRight), on: window)
+        let corner = try XCTUnwrap(window.cocoaFrame)
+        director.perform(.tile(.rightHalf), on: window)
+        let half = try XCTUnwrap(window.cocoaFrame)
+        XCTAssertEqual(CGPoint(x: half.minX, y: half.maxY), CGPoint(x: corner.minX, y: corner.maxY), "the same top-left")
+        XCTAssertNotEqual(half.height, corner.height)
+
+        director.perform(.tile(.rightHalf), on: window)
+        XCTAssertEqual(window.writes.last, Tile.leftHalf.frame(in: laptop.visibleFrame))
+    }
+
     func testCenterWorksOnTheDisplayAWiderWindowWasPlacedOn() throws {
         // As above, the right half of the left display leaves this window's centre on primary.
         let window = FakeWindow(frame: CGRect(x: -1400, y: 100, width: 1501, height: 600))
