@@ -60,13 +60,14 @@ enum ScreenGeometry {
     /// The display beside `display` toward `side`, for a move that heads one way rather than
     /// round a cycle: the nearest display lying wholly to that side and sharing some of its
     /// height, and of a stacked pair equally near, the one sharing more. Unlike `neighbor`, a
-    /// display only above or below never counts; reading order puts a monitor just before the
-    /// laptop under it, which would send a leftward move up. Nil when nothing is beside it, so a
-    /// move toward the edge of the desk stops there instead of wrapping.
+    /// display only above or below never counts; reading order can put a monitor just before
+    /// the laptop under it, which would send a leftward move up. Nil when nothing is beside it,
+    /// so a move toward the edge of the desk stops there instead of wrapping.
     static func adjacent(to display: Display, toward side: Display.Side, in displays: [Display] = Display.all) -> Display? {
         let here = display.frame
         // How far out from this display's edge on `side` the other one starts. Negative when
-        // the two overlap horizontally, and for any display on the other side.
+        // their x ranges overlap (one above or below the other), and for any display on the
+        // other side.
         func gap(_ other: CGRect) -> CGFloat {
             switch side {
             case .left: return here.minX - other.maxX
