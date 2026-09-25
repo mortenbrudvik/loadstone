@@ -146,7 +146,8 @@ final class WindowDirector {
     /// Sends the window to `target`, a tile's frame, then records where it actually ended up, so
     /// that pressing the same tile again can tell the window has not moved since. Recorded only
     /// once the window's top-left corner is where it was sent: an app that rounds or caps a size
-    /// keeps that corner, while one still reporting its old frame has not moved yet.
+    /// normally keeps that corner, while one still reporting its old frame has not moved yet. A
+    /// read-back that misses the corner drops any earlier entry rather than leaving it standing.
     ///
     /// An app that applies the frame late, and whose old frame already shared the target's
     /// top-left, reads back that old frame and has it recorded. Once Loadstone moves the window
@@ -169,9 +170,10 @@ final class WindowDirector {
 
     /// Whether a window at `current` is already in the tile whose frame is `target`: it fills the
     /// tile, or it is where it landed the last time Loadstone sent it to this same frame. The
-    /// second covers apps that never fill a tile exactly, rounding to a character grid (Terminal,
-    /// iTerm2) or holding a minimum or fixed width. A display change (a new resolution, the Dock
-    /// moving) changes the tile's frame, so the window is refitted before it is carried on.
+    /// second covers apps that never fill a tile exactly: rounding to a character grid (Terminal,
+    /// iTerm2), holding a minimum width, or accepting a size write and ignoring it. A display
+    /// change (a new resolution, the Dock moving) changes the tile's frame, so the window is
+    /// refitted before it is carried on.
     private func isPlaced(_ current: CGRect, in target: CGRect, key: WindowIdentity?, for command: WindowCommand) -> Bool {
         if current.isWithinAPoint(of: target) { return true }
         guard let key, let last = placements[key] else { return false }
@@ -236,7 +238,10 @@ final class WindowDirector {
 
 private extension CGRect {
     /// Every edge within a point of `other`'s. Next Display maps a window proportionally, so a
-    /// half carried onto a width that does not divide by 2 lands a fraction of a point off.
+    /// half carried to another display can miss that display's half where a width is odd: by
+    /// half a point onto an odd width, and by W2 / (2 * W1) from an odd width W1 onto W2. That
+    /// is over a point once the new display is more than twice as wide (1201 onto 2560 is
+    /// 1.07pt), and the next press then refits the window instead of carrying it on.
     func isWithinAPoint(of other: CGRect) -> Bool {
         abs(minX - other.minX) <= 1 && abs(maxX - other.maxX) <= 1
             && abs(minY - other.minY) <= 1 && abs(maxY - other.maxY) <= 1
