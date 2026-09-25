@@ -137,9 +137,10 @@ final class WindowDirector {
     }
 
     /// Moves the window `delta` displays along from the one under its centre, mapping its frame
-    /// proportionally. That can differ from the display Loadstone put it on only when the window
-    /// is held wider than that display and mostly off it, and mapped from a display narrower
-    /// than itself the window would grow on the way, most of it past the edge of the desk.
+    /// proportionally. The display Loadstone put it on differs from that one only for a window
+    /// held wider than its tile and mostly past that display's edge. Mapped from there, the
+    /// window would keep that overhang in proportion and grow on the way when that display is
+    /// the narrower, which can leave most of it off the desk.
     private func move(_ window: some MovableWindow, key: WindowIdentity?, current: CGRect, delta: Int, in displays: [Display]) -> CommandOutcome {
         guard let display = display(under: current, in: displays),
               let neighbor = ScreenGeometry.neighbor(of: display, delta: delta, in: displays) else { return .noDisplay }
@@ -223,7 +224,7 @@ final class WindowDirector {
     /// write can take before the refusal, though: AXWindow sets the size before the position, so
     /// an app that takes the size and then refuses the position, or times out on it, leaves the
     /// window resized at its old top-left, which can be exactly a stale frame recorded as where
-    /// it landed. So a refusal reads the frame again and drops the placement unless the window is
+    /// it landed. So after a refusal the placement is kept only if the frame, read again, is
     /// still within a point of `current`.
     ///
     /// Returns the outcome and the key the window goes by after the write, which the Restore

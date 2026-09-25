@@ -602,8 +602,8 @@ final class WindowDirectorTests: XCTestCase {
     }
 
     func testARefusedWriteThatStillResizedTheWindowForgetsWhereAHalfPutIt() {
-        // Top Left's size takes and its position is refused, which leaves the window in the top-left
-        // quadrant: back on the old frame Left Half read back, without being moved by hand.
+        // Top Left's size takes and its position is refused, which leaves the window in the
+        // top-left quadrant: back on the old frame Left Half read back, with no hand move.
         let topLeft = Tile.topLeft.frame(in: right.visibleFrame)
         let window = FakeWindow(frame: topLeft)
         window.appliesLate = true
