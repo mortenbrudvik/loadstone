@@ -12,6 +12,9 @@ final class WindowDirectorTests: XCTestCase {
         /// Set to act like Terminal or iTerm2, which round a window's size down to whole character
         /// cells and keep its top-left corner, so it never fills a tile exactly.
         var grid: CGSize?
+        /// Set to act like an app that will not make the window narrower than this. Like the grid,
+        /// it keeps the top-left corner, so the window grows to the right.
+        var minimumWidth: CGFloat?
         /// Set to act like an app that applies a frame only after the write has returned, so the
         /// frame read straight back is still the old one. `catchUp()` applies it.
         var appliesLate = false
@@ -31,6 +34,9 @@ final class WindowDirectorTests: XCTestCase {
                 let width = (frame.width / grid.width).rounded(.down) * grid.width
                 let height = (frame.height / grid.height).rounded(.down) * grid.height
                 landed = CGRect(x: frame.minX, y: frame.maxY - height, width: width, height: height)
+            }
+            if let minimumWidth {
+                landed.size.width = max(landed.width, minimumWidth)
             }
             if appliesLate {
                 pending = landed
@@ -250,6 +256,36 @@ final class WindowDirectorTests: XCTestCase {
             Tile.rightHalf.frame(in: left.visibleFrame),
             Tile.leftHalf.frame(in: left.visibleFrame),
         ])
+    }
+
+    func testRepeatedLeftHalfKeepsAWindowWiderThanTheDisplayToItsLeftOnThatDisplay() {
+        // The left display is 1440 wide, and this window will not go below 1501. In the right
+        // half of it, which starts at x = -720, the window reaches past the seam at x = 0: its
+        // centre is at -720 + 1501 / 2 = 30.5, on primary. It still belongs to the left display.
+        let window = FakeWindow(frame: CGRect(x: 100, y: 100, width: 1501, height: 600))
+        window.minimumWidth = 1501
+        let director = WindowDirector(displays: { [self.primary, self.right, self.left] })
+
+        for _ in 0..<4 { director.perform(.tile(.leftHalf), on: window) }
+
+        XCTAssertEqual(window.writes, [
+            Tile.leftHalf.frame(in: primary.visibleFrame),
+            Tile.rightHalf.frame(in: left.visibleFrame),
+            Tile.leftHalf.frame(in: left.visibleFrame),
+            Tile.leftHalf.frame(in: left.visibleFrame),
+        ])
+    }
+
+    func testNextDisplayMovesAWindowOnFromTheDisplayItWasPlacedOn() throws {
+        // As above, the right half of the left display leaves this window's centre on primary.
+        let window = FakeWindow(frame: CGRect(x: -1400, y: 100, width: 1501, height: 600))
+        window.minimumWidth = 1501
+        let director = WindowDirector(displays: { [self.primary, self.right, self.left] })
+        director.perform(.tile(.rightHalf), on: window)
+        let placed = try XCTUnwrap(window.cocoaFrame)
+
+        director.perform(.nextDisplay, on: window)
+        XCTAssertEqual(window.writes.last, Layout.mapped(placed, from: left.visibleFrame, to: primary.visibleFrame))
     }
 
     func testAWindowMovedSinceItWasPlacedGoesBackIntoTheHalfInsteadOfContinuing() {

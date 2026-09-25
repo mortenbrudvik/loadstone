@@ -28,8 +28,9 @@ final class WindowDirector {
     /// The tile frame Loadstone last sent each window to, and where the window reported itself
     /// once there, which differs when its app rounds or caps the size. That is how a second Left
     /// or Right Half knows the window is still in that half when it never fills the tile exactly.
-    /// The next tile replaces the entry; Restore, Center and a display move drop it, and so does
-    /// the window's process quitting, along with `originals`.
+    /// It also decides which display a window still sitting where it landed is on. The next tile
+    /// replaces the entry; Restore, Center and a display move drop it, and so does the window's
+    /// process quitting, along with `originals`.
     private var placements: [WindowIdentity: Placement] = [:]
     private let displays: () -> [Display]
 
@@ -63,7 +64,9 @@ final class WindowDirector {
         }
     }
 
-    /// Runs `command` on `window`, using the display under the window's centre.
+    /// Runs `command` on `window`, on the display it is on: the one Loadstone last put it on while
+    /// it is still where it landed, otherwise the one under its centre. Left or Right Half on a
+    /// window already in that half carries it on to the display beside it.
     @discardableResult
     func perform(_ command: WindowCommand, on window: some MovableWindow) -> CommandOutcome {
         guard let current = window.cocoaFrame else { return .frameUnreadable }
@@ -71,7 +74,7 @@ final class WindowDirector {
 
         switch command {
         case .tile(let tile):
-            guard let display = display(for: current, in: displays) else { return .noDisplay }
+            guard let display = display(for: current, key: window.identity, in: displays) else { return .noDisplay }
             // Left or Right Half again on a window already in that half carries it on into the
             // opposite half of the display beside it. With nothing beside it, it stays put.
             if let continuation = tile.continuation,
@@ -81,7 +84,7 @@ final class WindowDirector {
             }
             return place(window, in: tile, on: display, remembering: current)
         case .center:
-            guard let display = display(for: current, in: displays) else { return .noDisplay }
+            guard let display = display(for: current, key: window.identity, in: displays) else { return .noDisplay }
             return relocate(window, to: Layout.centered(current, in: display.visibleFrame), remembering: current)
         case .restore:
             // Restore must not record: it would store the current frame and then "restore" to it.
@@ -115,7 +118,7 @@ final class WindowDirector {
     }
 
     private func move(_ window: some MovableWindow, current: CGRect, delta: Int, in displays: [Display]) -> CommandOutcome {
-        guard let display = display(for: current, in: displays),
+        guard let display = display(for: current, key: window.identity, in: displays),
               let neighbor = ScreenGeometry.neighbor(of: display, delta: delta, in: displays) else { return .noDisplay }
         guard neighbor != display else { return .noOtherDisplay }
         return relocate(window, to: Layout.mapped(current, from: display.visibleFrame, to: neighbor.visibleFrame), remembering: current)
@@ -180,10 +183,18 @@ final class WindowDirector {
         originals[key] = current
     }
 
-    /// The display under the window's centre, or the primary display when the window is off
-    /// every display (after a disconnect) so it can still be brought back.
-    private func display(for frame: CGRect, in displays: [Display]) -> Display? {
-        ScreenGeometry.display(containing: frame, in: displays) ?? displays.first
+    /// The display a window at `frame` is on. While it is still where Loadstone last put it, that
+    /// is the display holding the frame it was sent to: a window held wider than that display
+    /// spills onto the next, and its centre can land there, which would send the next command
+    /// from the wrong display. Otherwise the display under the window's centre, or the primary
+    /// display when the window is off every display (after a disconnect) so it can still be
+    /// brought back.
+    private func display(for frame: CGRect, key: WindowIdentity?, in displays: [Display]) -> Display? {
+        if let key, let last = placements[key], frame.isWithinAPoint(of: last.landed),
+           let placedOn = ScreenGeometry.display(containing: last.target, in: displays) {
+            return placedOn
+        }
+        return ScreenGeometry.display(containing: frame, in: displays) ?? displays.first
     }
 
     private func report(_ outcome: CommandOutcome, for command: WindowCommand, pid: pid_t?) {
