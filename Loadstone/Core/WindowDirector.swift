@@ -286,8 +286,10 @@ final class WindowDirector {
     /// Records `frame` under `key`, the key the window goes by after the write, as where Restore
     /// returns it, unless something is recorded there already. A frame recorded under `oldKey`,
     /// the one the window was looked up by, moves across instead: the two differ only for a
-    /// title-based identity whose write renamed the window, and that frame is the one the window's
-    /// first command recorded.
+    /// title-based identity whose write renamed the window, and that frame is the one recorded by
+    /// the window's first command under the old title, or one that moved across to it since. A
+    /// title changed by anything else, a hand resize included, orphans the entry, as
+    /// `WindowIdentity.fallback` notes.
     private func rememberIfNeeded(_ frame: CGRect, for key: WindowIdentity?, lookedUpBy oldKey: WindowIdentity?) {
         guard let key, originals[key] == nil else { return }
         if let oldKey, let first = originals.removeValue(forKey: oldKey) {
@@ -299,9 +301,9 @@ final class WindowDirector {
 
     /// The display a tile or Center works on for a window at `frame`. While the window is still
     /// where Loadstone last put it, that is the display holding the frame it was sent to: a
-    /// window held wider than that display spills onto the next, and its centre can land there,
-    /// which would send the next half from the wrong display and bounce the window between the
-    /// two. Otherwise the display under its centre.
+    /// window held wider than its tile can have its centre on the next display, which would send
+    /// the next tile from the wrong display, and one wider than the display it was placed on
+    /// would bounce between the two. Otherwise the display under its centre.
     private func display(for frame: CGRect, key: WindowIdentity?, in displays: [Display]) -> Display? {
         if let placement = standingPlacement(for: key, at: frame),
            let placedOn = ScreenGeometry.display(containing: placement.target, in: displays) {
