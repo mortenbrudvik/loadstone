@@ -263,6 +263,32 @@ final class WindowDirectorTests: XCTestCase {
         XCTAssertEqual(window.cocoaFrame, floating)
     }
 
+    func testRestoreIsOneShotForAWindowWhoseTitleFollowsItsSize() {
+        // Center keeps the size, so it records under the title the window already has. Left Half
+        // renames the window, and the entry moves across rather than staying under both titles.
+        let window = FakeWindow(frame: floating)
+        window.titleFollowsSize = true
+        let director = makeDirector()
+        director.perform(.center, on: window)
+        director.perform(.tile(.leftHalf), on: window)
+
+        XCTAssertEqual(director.perform(.restore, on: window), .moved)
+        XCTAssertEqual(window.cocoaFrame, floating)
+        XCTAssertEqual(director.perform(.restore, on: window), .nothingToRestore)
+    }
+
+    func testARefusedRestoreCanBeRetried() {
+        let window = FakeWindow(frame: original)
+        let director = makeDirector()
+        director.perform(.tile(.leftHalf), on: window)
+        window.rejectWith = .cannotComplete
+        XCTAssertEqual(director.perform(.restore, on: window), .rejected(.cannotComplete))
+        window.rejectWith = nil
+
+        XCTAssertEqual(director.perform(.restore, on: window), .moved)
+        XCTAssertEqual(window.cocoaFrame, original)
+    }
+
     func testARejectedCommandIsNotRememberedForRestore() {
         let window = FakeWindow(frame: original)
         let director = makeDirector()
