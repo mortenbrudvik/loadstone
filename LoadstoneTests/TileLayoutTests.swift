@@ -105,6 +105,22 @@ final class TileLayoutTests: XCTestCase {
         }
     }
 
+    /// Pressing the opposite half after a carry must send the window back the way it came, into
+    /// the tile it left, though not always on the same display: beside a stacked pair, `adjacent`
+    /// picks the one sharing more height. So every continuation's landing has to lead back to
+    /// the tile it came from, the other way.
+    func testEveryContinuationLeadsBackTheOtherWay() {
+        for tile in Tile.allCases {
+            guard let there = tile.continuation else { continue }
+            guard let back = there.landing.continuation else {
+                XCTFail("\(tile) lands on \(there.landing), which carries nowhere")
+                continue
+            }
+            XCTAssertEqual(back.landing, tile, "\(tile)")
+            XCTAssertNotEqual(back.toward, there.toward, "\(tile)")
+        }
+    }
+
     func testCenterKeepsSize() {
         let current = CGRect(x: 0, y: 0, width: 200, height: 100)
         let centered = Layout.centered(current, in: area)

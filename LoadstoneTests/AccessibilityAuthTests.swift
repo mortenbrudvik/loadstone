@@ -3,8 +3,8 @@ import ApplicationServices
 import XCTest
 @testable import Loadstone
 
-/// These need real Accessibility answers from the system, so like `AXWindowTests` they are
-/// skipped in CI and run on a developer machine.
+/// These need real Accessibility answers from the system. Unlike `AXWindowTests` they run in CI
+/// as well as on a developer machine, and one that finds no other app to probe skips itself.
 ///
 /// They rely on the test host being *untrusted*, which it is: the Debug build is ad-hoc signed
 /// and gets a fresh identity on every rebuild, so TCC never has a grant for it. Each test says

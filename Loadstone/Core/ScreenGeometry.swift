@@ -57,6 +57,36 @@ enum ScreenGeometry {
         return ordered[(index + delta).modulo(ordered.count)]
     }
 
+    /// The display beside `display` toward `side`, for a move that heads one way rather than
+    /// round a cycle: the nearest display lying wholly to that side and sharing some of its
+    /// height, and of a stacked pair equally near, the one sharing more. Unlike `neighbor`, a
+    /// display only above or below never counts; reading order can put a monitor just before
+    /// the laptop under it, which would send a leftward move up. Nil when nothing is beside it,
+    /// so a move toward the edge of the desk stops there instead of wrapping.
+    static func adjacent(to display: Display, toward side: Display.Side, in displays: [Display] = Display.all) -> Display? {
+        let here = display.frame
+        // How far out from this display's edge on `side` the other one starts. Negative when
+        // their x ranges overlap (one above or below the other), and for any display on the
+        // other side.
+        func gap(_ other: CGRect) -> CGFloat {
+            switch side {
+            case .left: return here.minX - other.maxX
+            case .right: return other.minX - here.maxX
+            }
+        }
+        func sharedHeight(_ other: CGRect) -> CGFloat {
+            min(here.maxY, other.maxY) - max(here.minY, other.minY)
+        }
+        // Nearest, then most shared height, then the higher one, so that the answer never
+        // depends on the order AppKit lists displays in.
+        func rank(_ other: Display) -> (CGFloat, CGFloat, CGFloat) {
+            (gap(other.frame), -sharedHeight(other.frame), -other.frame.maxY)
+        }
+        return displays
+            .filter { gap($0.frame) >= 0 && sharedHeight($0.frame) > 0 }
+            .min { rank($0) < rank($1) }
+    }
+
     private static func readingOrder(_ a: Display, _ b: Display) -> Bool {
         if a.frame.minX != b.frame.minX { return a.frame.minX < b.frame.minX }
         return a.frame.maxY > b.frame.maxY

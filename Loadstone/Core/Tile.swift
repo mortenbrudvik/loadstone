@@ -39,9 +39,12 @@ enum Tile: String, CaseIterable, Sendable {
 }
 
 /// Everything a user can ask Loadstone to do to a window. This is the single source of truth
-/// for the hotkey list, the status-bar menu, and the Shortcuts settings pane: adding a case
-/// (or a `Tile`) fails to compile until `id`, `title`, `defaultShortcut`, and `section` cover it,
-/// and then it appears everywhere automatically.
+/// for the hotkey list, the status-bar menu, and the Shortcuts settings pane. Adding a `Tile`
+/// fails to compile until `title`, `defaultShortcut`, `section`, `frame(in:)`, and
+/// `continuation` cover it, and then it appears everywhere. A new case here also needs `id` and
+/// a branch in `WindowDirector.perform`, which the compiler asks for, and an entry in `all`,
+/// which it does not: left out of `all`, a command compiles and never reaches the menu, the
+/// hotkeys, or the settings pane.
 enum WindowCommand: Hashable, Sendable {
     case tile(Tile)
     case center
@@ -183,6 +186,20 @@ extension Tile {
             return workArea
         }
     }
+
+    /// Where this tile sends a window that is already in it. Left Half on a window in the left
+    /// half moves it on to the right half of the display to its left, so pressing it again and
+    /// again walks the window across the desk one half at a time; Right Half mirrors that. Nil
+    /// for tiles that stay on their display.
+    var continuation: (toward: Display.Side, landing: Tile)? {
+        switch self {
+        case .leftHalf: return (toward: .left, landing: .rightHalf)
+        case .rightHalf: return (toward: .right, landing: .leftHalf)
+        case .topHalf, .bottomHalf, .topLeft, .topRight, .bottomLeft, .bottomRight,
+             .leftThird, .centerThird, .rightThird, .leftTwoThirds, .rightTwoThirds, .maximize:
+            return nil
+        }
+    }
 }
 
 enum SnapZones {
@@ -237,8 +254,6 @@ enum SnapZones {
         return nil
     }
 
-    private enum Side { case left, right }
-
     private static func thirdAlongWidth(_ x: CGFloat, frame: CGRect) -> Tile {
         let t = (x - frame.minX) / max(frame.width, 1)
         if t < 1.0 / 3.0 { return .leftThird }
@@ -246,7 +261,7 @@ enum SnapZones {
         return .rightThird
     }
 
-    private static func thirdAlongHeight(_ y: CGFloat, frame: CGRect, side: Side) -> Tile {
+    private static func thirdAlongHeight(_ y: CGFloat, frame: CGRect, side: Display.Side) -> Tile {
         let t = (y - frame.minY) / max(frame.height, 1)
         switch side {
         case .left:
