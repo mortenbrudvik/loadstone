@@ -136,7 +136,7 @@ Then grant Accessibility as above.
 
 ## Troubleshooting
 
-Menu bar → Loadstone → **Loadstone Help** opens this page.
+Menu bar → Loadstone → **Loadstone Help** opens the user guide at https://brudvik.com/loadstone/help.
 
 **Shortcuts do nothing, or Loadstone beeps.** Accessibility is not in effect. Follow the [Accessibility steps](#accessibility-required) again, including the Relaunch: macOS can list Loadstone as allowed and still refuse until the app restarts. A Debug build gets a new signature on every build, so it needs the remove-and-re-add steps after each rebuild.
 
