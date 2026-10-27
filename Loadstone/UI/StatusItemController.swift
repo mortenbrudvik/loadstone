@@ -3,8 +3,8 @@ import KeyboardShortcuts
 
 @MainActor
 final class StatusItemController: NSObject, NSMenuDelegate {
-    /// The user guide is the README on GitHub; the Help item opens it in the browser.
-    static let helpURL = URL(string: "https://github.com/mortenbrudvik/loadstone#readme")!
+    /// The user guide is https://brudvik.com/loadstone/help; the Help item opens it in the browser.
+    static let helpURL = URL(string: "https://brudvik.com/loadstone/help")!
 
     private let statusItem: NSStatusItem
     private let settings = SettingsWindowController()

@@ -4,14 +4,14 @@ import XCTest
 
 @MainActor
 final class StatusItemControllerTests: XCTestCase {
-    func testMenuHasAHelpItemThatOpensTheReadme() throws {
+    func testMenuHasAHelpItemThatOpensTheUserGuide() throws {
         let controller = StatusItemController()
         let help = try XCTUnwrap(
             controller.menu.items.first { $0.title == "Loadstone Help" },
             "no Help item in \(controller.menu.items.map(\.title))"
         )
         XCTAssertEqual(help.action, #selector(StatusItemController.openHelp))
-        XCTAssertEqual(StatusItemController.helpURL.absoluteString, "https://github.com/mortenbrudvik/loadstone#readme")
+        XCTAssertEqual(StatusItemController.helpURL.absoluteString, "https://brudvik.com/loadstone/help")
     }
 
     func testHelpSitsWithTheAppItemsBetweenSettingsAndQuit() throws {
